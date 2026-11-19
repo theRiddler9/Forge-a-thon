@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+  <title>ForgePilot Agent</title>
+</head>
+<body>
+  <div id="header">
+    <h3>ForgePilot</h3>
+    <span id="model-badge">Connecting...</span>
+  </div>
+
+  <div id="chat-log">
+    <div class="message agent">
+      Hello! I'm ForgePilot, running on TrueForge local mode with in-process MCP tools. Ask me to inspect your code, implement features, or refactor functions safely.
+    </div>
+  </div>
+
+  <div id="input-container">
+    <textarea id="prompt-input" placeholder="Ask ForgePilot... (Supports @file:path and @symbol:name)"></textarea>
+    <div id="action-buttons">
+      <button id="cancel-btn" class="danger" style="display: none;">Cancel</button>
+      <div style="flex: 1;"></div>
+      <button id="send-btn" class="success">Send (Ctrl+Enter)</button>
+    </div>
+  </div>
+
+  <script src="webview.js"></script>
+</body>
+</html>
