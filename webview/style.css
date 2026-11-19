@@ -273,97 +273,6 @@ body {
   font-weight: 600;
 }
 
-/* Proposal Review / Hunks Deck */
-.proposal-review {
-  background-color: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 10px;
-  margin: 8px 0;
-}
-
-.proposal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--border);
-}
-
-.proposal-file-badge {
-  font-weight: 600;
-  font-family: monospace;
-  color: #79b8ff;
-  font-size: 12px;
-}
-
-.proposal-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.hunk-item {
-  background-color: var(--input-bg);
-  border: 1px solid var(--input-border);
-  border-radius: 4px;
-  margin-bottom: 8px;
-  padding: 8px;
-  transition: all 0.2s ease;
-}
-
-.hunk-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-  font-size: 11px;
-  color: var(--fg-secondary);
-}
-
-.hunk-status-badge {
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.hunk-status-badge.pending { background-color: rgba(255, 152, 0, 0.2); color: #ffa726; }
-.hunk-status-badge.accepted { background-color: rgba(46, 160, 67, 0.2); color: #7ee787; }
-.hunk-status-badge.rejected { background-color: rgba(248, 81, 73, 0.2); color: #ffa198; }
-
-.hunk-diff-container {
-  font-family: var(--vscode-editor-font-family, monospace);
-  font-size: 11px;
-  line-height: 1.4;
-  border-radius: 3px;
-  overflow-x: auto;
-  margin: 6px 0;
-  background-color: rgba(0, 0, 0, 0.2);
-}
-
-.hunk-diff-line {
-  padding: 1px 4px;
-  white-space: pre;
-}
-
-.hunk-diff-line.add {
-  background-color: var(--diff-add-bg);
-  color: var(--diff-add-fg);
-}
-
-.hunk-diff-line.del {
-  background-color: var(--diff-del-bg);
-  color: var(--diff-del-fg);
-}
-
-.hunk-controls {
-  display: flex;
-  gap: 6px;
-  margin-top: 6px;
-}
-
 /* Buttons */
 button {
   display: inline-flex;
@@ -710,3 +619,352 @@ button {
 #sub-bar {
   justify-content: space-between;
 }
+
+/* ===== Figma redesign: context chosen card ===== */
+.context-card {
+  background-color: rgba(57, 197, 207, 0.06);
+  border: 1px solid rgba(57, 197, 207, 0.28);
+  border-radius: 8px;
+  padding: 8px;
+  margin: 2px 0;
+  font-size: 12px;
+}
+
+.context-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 6px 4px;
+  color: var(--teal);
+  border-bottom: 1px solid rgba(57, 197, 207, 0.18);
+  margin-bottom: 4px;
+}
+
+.context-card-title {
+  font-weight: 600;
+  font-size: 11.5px;
+  color: var(--teal);
+  flex: 1;
+}
+
+.context-card-badge {
+  font-size: 10px;
+  color: var(--fg-secondary);
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1px 8px;
+}
+
+.context-rows { display: flex; flex-direction: column; }
+
+.context-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 6px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.context-row:hover { background-color: var(--bg-hover); }
+.context-row-icon { color: var(--teal); flex: 0 0 auto; }
+.context-row-main { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.context-row-path {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11px;
+  color: #79b8ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.context-row-reason { font-size: 10px; color: var(--fg-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.context-row-chevron { color: var(--fg-secondary); flex: 0 0 auto; }
+
+/* ===== Figma redesign: executed MCP tool log ===== */
+.tool-log-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 2px 0;
+}
+
+.tool-log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--border);
+}
+
+.tool-log-title {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: var(--fg-secondary);
+}
+
+.tool-log-total {
+  font-size: 10px;
+  color: var(--fg-secondary);
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+
+.tool-log-rows { display: flex; flex-direction: column; }
+
+.tool-log-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.tool-log-row:hover { background-color: var(--bg-hover); }
+.tool-log-row:last-of-type { border-bottom: none; }
+.tool-log-icon { color: #d2a8ff; flex: 0 0 auto; }
+
+.tool-log-name {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 10.5px;
+  color: #d2a8ff;
+  white-space: nowrap;
+}
+
+.tool-log-args {
+  flex: 1;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 10.5px;
+  color: var(--fg-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.tool-log-badge {
+  font-size: 9.5px;
+  color: var(--fg-primary);
+  background-color: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+.tool-log-badge.done { color: var(--diff-add-fg); border-color: rgba(46,160,67,0.4); }
+.tool-log-chevron { color: var(--fg-secondary); flex: 0 0 auto; }
+
+.tool-log-detail {
+  margin: 0;
+  padding: 6px 10px 10px 31px;
+  font-size: 10px;
+  color: var(--fg-secondary);
+  background-color: rgba(0, 0, 0, 0.25);
+  border-bottom: 1px solid var(--border);
+  max-height: 140px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+/* ===== Figma redesign: pending tool action (awaiting approval) ===== */
+.pending-tool-card {
+  background-color: rgba(210, 153, 34, 0.07);
+  border: 1px solid rgba(210, 153, 34, 0.35);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 2px 0;
+}
+
+.pending-tool-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(210, 153, 34, 0.25);
+}
+
+.pending-tool-title {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: var(--amber);
+}
+
+.pending-tool-note { font-size: 9.5px; color: var(--amber); opacity: 0.85; }
+
+.pending-tool-body {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+.pending-tool-icon { color: var(--amber); display: flex; }
+.pending-tool-main { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pending-tool-name { font-size: 11px; color: var(--fg-primary); font-family: var(--vscode-editor-font-family, monospace); }
+.pending-tool-name code { color: #79b8ff; }
+.pending-tool-sub { font-size: 10px; color: var(--fg-secondary); }
+
+.pending-tool-badge {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--amber);
+  background-color: rgba(210, 153, 34, 0.15);
+  border: 1px solid rgba(210, 153, 34, 0.45);
+  border-radius: 4px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+/* ===== Figma redesign: proposal review card ===== */
+.proposal-review {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 2px 0;
+}
+
+.proposal-review.resolved { opacity: 0.75; }
+
+.proposal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--border);
+}
+
+.proposal-file { display: flex; align-items: center; gap: 7px; min-width: 0; color: var(--fg-secondary); }
+.proposal-path {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #79b8ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.proposal-delta { font-size: 10.5px; font-family: var(--vscode-editor-font-family, monospace); }
+.delta-add { color: var(--diff-add-fg); }
+.delta-del { color: var(--diff-del-fg); }
+
+.open-diff-btn {
+  background-color: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--fg-primary);
+  border-radius: 5px;
+  font-size: 10.5px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.open-diff-btn:hover { border-color: var(--accent); color: #ffffff; }
+
+.hunk-list { display: flex; flex-direction: column; padding: 6px; gap: 4px; }
+
+.hunk-row-item {
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.hunk-row-item.accepted { border-color: rgba(46, 160, 67, 0.45); background-color: rgba(46, 160, 67, 0.06); }
+.hunk-row-item.rejected { border-color: rgba(248, 81, 73, 0.4); background-color: rgba(248, 81, 73, 0.06); }
+
+.hunk-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+}
+
+.hunk-info { flex: 1; min-width: 0; }
+.hunk-title { font-size: 10.5px; font-weight: 600; color: var(--fg-primary); }
+.hunk-range { color: var(--fg-secondary); font-weight: 400; font-family: var(--vscode-editor-font-family, monospace); font-size: 10px; }
+.hunk-reason { font-size: 10px; color: var(--fg-secondary); font-family: var(--vscode-editor-font-family, monospace); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.hunk-quick { display: flex; gap: 4px; }
+
+.hunk-accept-btn, .hunk-reject-btn {
+  border: none;
+  border-radius: 5px;
+  padding: 4px 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+.hunk-accept-btn { background-color: rgba(63, 185, 80, 0.15); color: var(--diff-add-fg); }
+.hunk-accept-btn:hover { background-color: rgba(63, 185, 80, 0.3); }
+.hunk-reject-btn { background-color: rgba(248, 81, 73, 0.12); color: var(--diff-del-fg); }
+.hunk-reject-btn:hover { background-color: rgba(248, 81, 73, 0.28); }
+
+.proposal-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-top: 1px solid var(--border);
+}
+
+.reject-all-btn {
+  background: transparent;
+  border: none;
+  color: var(--fg-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 5px;
+}
+
+.reject-all-btn:hover { color: var(--diff-del-fg); background-color: rgba(248, 81, 73, 0.1); }
+
+.accept-all-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg-primary);
+  font-size: 10.5px;
+  border-radius: 5px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.accept-all-btn:hover { border-color: var(--accent); }
+
+.apply-accepted-btn {
+  background-color: var(--accent);
+  border: none;
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+.apply-accepted-btn:hover { background-color: var(--accent-hover); }
+.apply-accepted-btn:disabled { opacity: 0.45; cursor: default; }
+
+.proposal-outcome { font-size: 11px; font-weight: 600; }
+.proposal-outcome.applied { color: var(--diff-add-fg); }
+.proposal-outcome.rejected { color: var(--diff-del-fg); }
+
+/* User bubble contrast per Figma */
+.message.user {
+  background-color: rgba(47, 129, 247, 0.16);
+  border: 1px solid rgba(47, 129, 247, 0.38);
+  color: #e8e8e8;
+}
+
+.message.user .msg-time { color: #9da7b3; }
