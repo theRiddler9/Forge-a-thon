@@ -42,11 +42,16 @@ npm install
 ```
 
 ### Step 2: Start TrueForge Locally
-In a separate terminal, launch TrueForge in local mode:
+In a separate terminal, launch TrueForge in local mode (with network policy disabled so TrueForge can reach the extension's localhost MCP server):
+
 ```bash
-npx @truefoundry/trueforge@latest
+# On Linux / macOS:
+NETWORK_POLICY_ENABLED=false npx @truefoundry/trueforge@latest
+
+# On Windows PowerShell:
+$env:NETWORK_POLICY_ENABLED="false"; npx @truefoundry/trueforge@latest
 ```
-*TrueForge will boot at `http://localhost:8790` with local SQLite storage and no authentication.*
+*TrueForge boots at `http://localhost:8790` with local SQLite storage (`%LOCALAPPDATA%\trueforge\Data\db\db.sqlite`) and no authentication.*
 
 ### Step 3: Configure Models in TrueForge
 Open `http://localhost:8790` in your browser:

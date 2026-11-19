@@ -1040,6 +1040,10 @@ button {
   font-weight: 600;
 }
 
+.streaming-badge.cancelled {
+  color: #f85149;
+}
+
 .streaming-dot {
   width: 6px;
   height: 6px;

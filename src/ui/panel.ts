@@ -4,6 +4,7 @@ import path from 'path';
 import { TrueForgeClient } from '../trueforge/client.js';
 import { globalEditStaging } from '../edit/staging.js';
 import { parseMentions, resolveMentions, formatContextBlock } from '../context/mentions.js';
+import { globalContextBudget } from '../mcp/tools/contextBudget.js';
 
 function extractToolResponseText(event: any): string {
   if (!event) return '';
@@ -87,6 +88,8 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
         case 'resetSession':
           this.currentSessionId = undefined;
           globalEditStaging.clearAll();
+          globalContextBudget.reset();
+          this._refreshBudget();
           this.postMessage({ type: 'session', label: 'Fresh Session' });
           this.postMessage({ type: 'status', model: this.client.getActiveModel() });
           break;
@@ -119,6 +122,16 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
       type: 'status',
       model: this.client.getActiveModel(),
     });
+    this._refreshBudget();
+  }
+
+  private _refreshBudget() {
+    const info = globalContextBudget.getBudgetInfo();
+    this.postMessage({
+      type: 'budgetUpdate',
+      used: info.usedTokens,
+      total: info.totalBudget,
+    });
   }
 
   public postMessage(message: any) {
@@ -138,6 +151,7 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
           text: contextBlock,
           items: resolvedContext.map((it) => ({ type: it.type, target: it.target, reason: it.reason, tokens: it.tokens })),
         });
+        this._refreshBudget();
       }
 
       const fullPrompt = contextBlock ? `${contextBlock}\n${userInput}` : userInput;
@@ -194,6 +208,7 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
               badge: makeToolBadge(name, resultText, durationMs),
               durationMs,
             });
+            this._refreshBudget();
             return;
           }
           if (type === 'thread.created' && event?.threadId && event.threadId !== 'main') {
@@ -246,6 +261,7 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
           }
         },
         onDone: (status) => {
+          this._refreshBudget();
           this.postMessage({ type: 'turnDone', status });
         },
         onError: (err) => {

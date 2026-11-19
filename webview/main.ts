@@ -474,7 +474,7 @@ function handleCancel() {
   sendBtn.disabled = false;
   if (currentStreamingBody) {
     const badge = currentStreamingMessage?.querySelector('.streaming-badge');
-    if (badge) badge.outerHTML = 'Cancelled';
+    if (badge) badge.outerHTML = '<span class="streaming-badge cancelled">Cancelled</span>';
     currentStreamingBody.innerHTML += '<br/><span style="color: #ff9800;">[⏹ Turn cancelled by user. Workspace remains 100% clean.]</span>';
     currentStreamingMessage = null;
     currentStreamingBody = null;
@@ -590,6 +590,25 @@ window.addEventListener('message', (event) => {
           }
         }
         setFallbackMode(msg.fallback === true);
+      }
+      break;
+
+    case 'budgetUpdate':
+      if (budgetValue && budgetFill) {
+        const used = msg.used ?? 0;
+        const total = msg.total ?? 30000;
+        const pct = Math.min(100, Math.round((used / total) * 100));
+        const kUsed = (used / 1000).toFixed(1).replace(/\.0$/, '');
+        const kTotal = Math.round(total / 1000);
+        budgetValue.textContent = `${kUsed}k / ${kTotal}k tokens`;
+        budgetFill.style.width = `${pct}%`;
+        if (pct > 90) {
+          budgetFill.style.backgroundColor = '#f85149';
+        } else if (pct > 70) {
+          budgetFill.style.backgroundColor = '#d29922';
+        } else {
+          budgetFill.style.backgroundColor = '#2ea44f';
+        }
       }
       break;
 
