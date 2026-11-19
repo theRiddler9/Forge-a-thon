@@ -151,7 +151,18 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
         this.postMessage({
           type: 'status',
           model: this.client.getActiveModel(),
+          fallback: this.client.lastFallbackInfo != null,
         });
+        const fb = this.client.lastFallbackInfo;
+        if (fb) {
+          this.postMessage({
+            type: 'fallbackActivated',
+            from: fb.from,
+            to: fb.to,
+            attempts: fb.attempts,
+            maxRetries: fb.maxRetries,
+          });
+        }
         this.postMessage({
           type: 'session',
           label: `Session #${String(session.id).replace(/[^a-zA-Z0-9]/g, '').slice(-4)}`,
