@@ -44,6 +44,8 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'forgepilot.agentView';
   private _view?: vscode.WebviewView;
   private currentSessionId?: string;
+  private sessionTokens = 0;
+  private modelContexts = new Map<string, number>();
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -79,19 +81,23 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
         case 'selectModel':
           this.client.setActiveModel(data.model);
           this.currentSessionId = undefined; // Reset session to use newly chosen model
+          this.sessionTokens = 0;
           this.postMessage({
             type: 'status',
             model: data.model,
           });
           this.postMessage({ type: 'session', label: 'Fresh Session' });
+          this._postContextUsage();
           break;
         case 'resetSession':
           this.currentSessionId = undefined;
+          this.sessionTokens = 0;
           globalEditStaging.clearAll();
           globalContextBudget.reset();
           this._refreshBudget();
           this.postMessage({ type: 'session', label: 'Fresh Session' });
           this.postMessage({ type: 'status', model: this.client.getActiveModel() });
+          this._postContextUsage();
           break;
         case 'sendMessage':
           await this._handleUserMessage(data.text);
@@ -112,10 +118,14 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
   }
 
   private async _refreshModels() {
-    const models = await this.client.listAvailableModels();
+    const models = await this.client.listModelsDetailed();
+    this.modelContexts = new Map(
+      models.map((m) => [m.name, m.contextLength ?? 32768] as [string, number])
+    );
     this.postMessage({
       type: 'modelsList',
-      models,
+      models: models.map((m) => m.name),
+      contexts: Object.fromEntries(models.map((m) => [m.name, m.contextLength ?? 32768])),
       activeModel: this.client.getActiveModel(),
     });
     this.postMessage({
@@ -123,6 +133,17 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
       model: this.client.getActiveModel(),
     });
     this._refreshBudget();
+    this._postContextUsage();
+  }
+
+  private _postContextUsage() {
+    const total = this.modelContexts.get(this.client.getActiveModel()) ?? 32768;
+    this.postMessage({
+      type: 'budgetUpdate',
+      used: this.sessionTokens,
+      total,
+      scope: 'session',
+    });
   }
 
   private _refreshBudget() {
@@ -297,6 +318,8 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
       }
 
       this._refreshBudget();
+      this.sessionTokens += outcome.metrics?.inputTokens ?? 0;
+      this._postContextUsage();
       if (outcome.status === 'error') {
         this.postMessage({
           type: 'error',
