@@ -7,23 +7,70 @@
   <title>ForgePilot Agent</title>
 </head>
 <body>
-  <div id="header">
-    <h3>ForgePilot</h3>
-    <span id="model-badge">Connecting...</span>
+  <div id="top-bar">
+    <div class="brand">
+      <svg class="brand-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
+      <span class="brand-name">ForgePilot</span>
+      <span id="status-dot" class="status-dot connected" title="Connected to TrueForge"></span>
+    </div>
+
+    <div class="model-picker-container">
+      <select id="model-select" title="Active Model in TrueForge">
+        <option value="nvidia/nemotron-3-ultra-550b-a55b">nvidia/nemotron-3-ultra-550b-a55b</option>
+        <option value="google-gemini/gemini-3-8-flash">google-gemini/gemini-3-8-flash</option>
+      </select>
+      <button id="refresh-models-btn" class="icon-btn" title="Refresh models from TrueForge">↻</button>
+    </div>
+  </div>
+
+  <div id="sub-bar">
+    <div id="budget-container">
+      <span class="budget-label">Context:</span>
+      <span id="budget-value">0 / 30k tokens</span>
+      <div id="budget-progress-track">
+        <div id="budget-progress-fill" style="width: 0%;"></div>
+      </div>
+    </div>
+    <button id="clear-chat-btn" class="text-btn" title="Clear chat history">Clear</button>
   </div>
 
   <div id="chat-log">
     <div class="message agent">
-      Hello! I'm ForgePilot, running on TrueForge local mode with in-process MCP tools. Ask me to inspect your code, implement features, or refactor functions safely.
+      <div class="msg-header">
+        <span class="msg-author">🤖 ForgePilot</span>
+        <span class="msg-time">Ready</span>
+      </div>
+      <div class="msg-body">
+        Welcome to ForgePilot! Running locally on TrueForge with safe MCP diff gating.
+        <br/><br/>
+        • Use <code>@file:path</code> or <code>@symbol:name</code> to attach specific code slices.<br/>
+        • All file edits use <code>propose_write</code> for per-hunk diff review before disk changes.
+      </div>
     </div>
   </div>
 
   <div id="input-container">
-    <textarea id="prompt-input" placeholder="Ask ForgePilot... (Supports @file:path and @symbol:name)"></textarea>
+    <div class="quick-chips">
+      <span class="chip" id="chip-file">+ @file</span>
+      <span class="chip" id="chip-symbol">+ @symbol</span>
+    </div>
+
+    <textarea id="prompt-input" placeholder="Ask ForgePilot... (Ctrl+Enter to send)"></textarea>
+
     <div id="action-buttons">
-      <button id="cancel-btn" class="danger" style="display: none;">Cancel</button>
+      <button id="cancel-btn" class="danger-btn pulse" style="display: none;">
+        ⏹ Cancel Turn
+      </button>
       <div style="flex: 1;"></div>
-      <button id="send-btn" class="success">Send (Ctrl+Enter)</button>
+      <button id="send-btn" class="primary-btn">
+        <span>Send</span>
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
     </div>
   </div>
 

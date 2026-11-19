@@ -16,8 +16,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const config = vscode.workspace.getConfiguration('forgepilot');
   const serverUrl = config.get<string>('serverUrl', 'http://localhost:8790');
-  const primaryModel = config.get<string>('primaryModel', 'anthropic/claude-sonnet-4-6');
-  const fallbackModel = config.get<string>('fallbackModel', 'openai/gpt-4o');
+  const primaryModel = config.get<string>('primaryModel', 'nvidia/nemotron-3-ultra-550b-a55b');
+  const fallbackModel = config.get<string>('fallbackModel', 'google-gemini/gemini-3-8-flash');
   const tokenBudget = config.get<number>('tokenBudget', 30000);
 
   globalContextBudget.setBudget(tokenBudget);
@@ -41,6 +41,9 @@ export async function activate(context: vscode.ExtensionContext) {
     fallbackModel,
     mcpServerName: 'forgepilot',
   });
+
+  // Query live TrueForge models
+  client.listAvailableModels().catch(() => {});
 
   // 3. Register MCP server in TrueForge Settings
   client.registerMcpServer('forgepilot', mcpInstance.url).then((registered) => {

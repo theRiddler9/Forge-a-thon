@@ -32,6 +32,20 @@ export class TrueForgeClient {
     return this.config.baseUrl;
   }
 
+  async listAvailableModels(): Promise<string[]> {
+    try {
+      const res = await this.sdkClient.models.list();
+      const list = (res.data?.map((m: any) => m.name || m.id) || []).filter(Boolean);
+      if (list.length > 0 && (!this.activeModel || !list.includes(this.activeModel))) {
+        this.activeModel = list[0];
+      }
+      return list;
+    } catch (err: any) {
+      console.warn(`Could not fetch models from TrueForge: ${err.message}`);
+      return [];
+    }
+  }
+
   async registerMcpServer(name: string, url: string): Promise<boolean> {
     try {
       await (this.sdkClient.settings.mcpServers as any).createOrUpdate({
