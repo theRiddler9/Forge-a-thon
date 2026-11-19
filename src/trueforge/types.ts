@@ -10,6 +10,7 @@ export interface TrueForgeClientConfig {
 export interface TurnStreamCallbacks {
   onEvent?: (event: any, sequenceId: number | string) => void;
   onDelta?: (text: string, eventId: string) => void;
+  onReasoningDelta?: (text: string, eventId: string) => void;
   onToolApprovalRequired?: (toolCallId: string, toolName: string, args: any) => void;
   onError?: (err: Error) => void;
   onDone?: (status: string, message?: string) => void;

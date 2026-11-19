@@ -215,10 +215,18 @@ export class TrueForgeClient {
           const merged = existing ? mergeEventDelta(existing, event) : event;
           eventsMap.set(event.id, merged);
 
-          if (callbacks.onDelta) {
-            const textDelta = (event as any).delta?.content?.[0]?.text ?? (event as any).delta?.text ?? '';
-            if (textDelta) {
-              callbacks.onDelta(textDelta, event.id);
+          // Reasoning models (e.g. gpt-oss) stream reasoningContent deltas
+          // separately from content deltas. TrueForge flattens the OpenAI
+          // shape, so the text lives at the TOP level of the delta event.
+          const anyEvent = event as any;
+          if (typeof anyEvent.content === 'string' && anyEvent.content.length > 0) {
+            if (callbacks.onDelta) {
+              callbacks.onDelta(anyEvent.content, event.id);
+            }
+          }
+          if (typeof anyEvent.reasoningContent === 'string' && anyEvent.reasoningContent.length > 0) {
+            if (callbacks.onReasoningDelta) {
+              callbacks.onReasoningDelta(anyEvent.reasoningContent, event.id);
             }
           }
         } else {
