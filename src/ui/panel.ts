@@ -282,8 +282,8 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
             if (toolName === 'propose_write') {
               const proposal = globalEditStaging.stageProposal(
                 this.workspaceRoot,
-                args.path,
-                args.newContent,
+                args.path ?? args.filePath ?? '',
+                args.newContent ?? args.new_content ?? '',
                 toolCallId
               );
               this.postMessage({
