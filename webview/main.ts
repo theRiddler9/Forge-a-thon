@@ -540,15 +540,11 @@ resetSessionBtn.addEventListener('click', () => {
 });
 
 chipFile.addEventListener('click', () => {
-  promptInput.value += '@file:';
-  promptInput.focus();
-  renderAttachChips();
+  vscode.postMessage({ type: 'pickFileMention' });
 });
 
 chipSymbol.addEventListener('click', () => {
-  promptInput.value += '@symbol:';
-  promptInput.focus();
-  renderAttachChips();
+  vscode.postMessage({ type: 'pickSymbolMention' });
 });
 
 // Suggestion chips on the welcome screen prefill + send
@@ -706,6 +702,15 @@ window.addEventListener('message', (event) => {
       }
       break;
     }
+
+    case 'insertMention':
+      if (typeof msg.mention === 'string' && msg.mention.length > 0) {
+        const sep = promptInput.value.trimEnd().length > 0 ? ' ' : '';
+        promptInput.value = `${promptInput.value.trimEnd()}${sep}${msg.mention} `;
+        renderAttachChips();
+        promptInput.focus();
+      }
+      break;
 
     case 'toolCall':
       appendToolCard(msg.name, msg.args, msg.isDestructive);
