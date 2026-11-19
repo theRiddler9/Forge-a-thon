@@ -1056,3 +1056,9 @@ button {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.25; }
 }
+
+.failed-marker {
+  color: var(--diff-del-fg);
+  font-size: 10px;
+  font-weight: 600;
+}

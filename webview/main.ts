@@ -614,6 +614,19 @@ window.addEventListener('message', (event) => {
 
     case 'fallbackActivated': {
       setFallbackMode(true);
+      // Finalize the failed model's bubble: swap the Streaming badge for a
+      // marker, format whatever partial text arrived, then start fresh —
+      // subsequent deltas open a new bubble in the fallback model's header.
+      if (currentStreamingMessage) {
+        const badge = currentStreamingMessage.querySelector('.streaming-badge');
+        if (badge) badge.outerHTML = '<span class="failed-marker">Failed</span>';
+      }
+      if (currentStreamingBody) {
+        currentStreamingBody.innerHTML = formatMessageBody(currentStreamingBody.textContent || '(no output — model request failed)');
+      }
+      currentStreamingMessage = null;
+      currentStreamingBody = null;
+      streamingText = '';
       const banner = document.createElement('div');
       banner.className = 'fallback-banner';
       const to = escapeHtml(String(msg.to ?? 'fallback model'));
@@ -640,11 +653,15 @@ window.addEventListener('message', (event) => {
       break;
 
     case 'tokenDelta':
-      if (currentStreamingBody) {
-        streamingText += msg.text;
-        currentStreamingBody.textContent += msg.text;
-        chatLog.scrollTop = chatLog.scrollHeight;
+      // Deltas may arrive after a silent fallback reset the streaming refs;
+      // start a fresh streaming bubble in the fallback model's header style.
+      if (!currentStreamingBody) {
+        currentStreamingMessage = appendMessage('agent', '', { streaming: true });
+        currentStreamingBody = currentStreamingMessage.querySelector('.msg-body');
       }
+      streamingText += msg.text;
+      currentStreamingBody.textContent += msg.text;
+      chatLog.scrollTop = chatLog.scrollHeight;
       break;
 
     case 'toolCall':
