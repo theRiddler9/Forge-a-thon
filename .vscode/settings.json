@@ -1,0 +1,6 @@
+{
+  "forgepilot.serverUrl": "http://localhost:8790",
+  "forgepilot.primaryModel": "meta/llama-3.3-70b-instruct",
+  "forgepilot.fallbackModel": "meta/llama-3.1-70b-instruct",
+  "forgepilot.tokenBudget": 30000
+}
