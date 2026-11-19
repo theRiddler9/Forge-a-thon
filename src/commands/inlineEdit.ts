@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import path from 'path';
 import { TrueForgeClient } from '../trueforge/client.js';
 import { globalEditStaging } from '../edit/staging.js';
+import { applyProposalViaEditor } from '../edit/apply.js';
 import { globalHunkCodeLensProvider } from '../edit/codelens.js';
 
 export function registerInlineEditCommand(
@@ -108,9 +109,13 @@ export function registerInlineEditCommand(
 
               if (choice === 'Accept All') {
                 globalEditStaging.acceptAllHunks(proposal.proposalId);
-                globalEditStaging.applyProposal(proposal.proposalId);
-                await client.resumeApproval(activeSessionId, toolCallId, 'allow');
-                vscode.window.showInformationMessage(`Applied all hunks to ${filePath}.`);
+                const applied = await applyProposalViaEditor(proposal.proposalId);
+                if (applied.ok) {
+                  await client.resumeApproval(activeSessionId, toolCallId, 'allow');
+                  vscode.window.showInformationMessage(`Applied all hunks to ${filePath}.`);
+                } else {
+                  vscode.window.showErrorMessage(`ForgePilot: Could not apply the edits: ${applied.reason}. No files were changed.`);
+                }
               } else if (choice === 'Reject All') {
                 globalEditStaging.discardProposal(proposal.proposalId);
                 await client.resumeApproval(activeSessionId, toolCallId, 'deny', 'User rejected proposal');

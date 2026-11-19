@@ -6,6 +6,7 @@ import { AgentViewProvider } from './ui/panel.js';
 import { registerInlineEditCommand } from './commands/inlineEdit.js';
 import { registerUndoCommand } from './commands/undo.js';
 import { globalEditStaging } from './edit/staging.js';
+import { applyProposalViaEditor } from './edit/apply.js';
 import { globalHunkCodeLensProvider } from './edit/codelens.js';
 import { globalContextBudget } from './mcp/tools/contextBudget.js';
 
@@ -69,8 +70,12 @@ export async function activate(context: vscode.ExtensionContext) {
         globalEditStaging.setHunkDecision(proposalId, hunkId, 'accepted');
         const proposal = globalEditStaging.getProposal(proposalId);
         if (proposal && proposal.acceptedHunkIds.size + proposal.rejectedHunkIds.size === proposal.hunks.length) {
-          globalEditStaging.applyProposal(proposalId);
-          vscode.window.showInformationMessage(`Applied accepted hunks to ${proposal.relativePath}.`);
+          const applied = await applyProposalViaEditor(proposalId);
+          if (applied.ok) {
+            vscode.window.showInformationMessage(`Applied accepted hunks to ${proposal.relativePath}.`);
+          } else {
+            vscode.window.showErrorMessage(`ForgePilot: Could not apply the edits: ${applied.reason}. No files were changed.`);
+          }
         }
         globalHunkCodeLensProvider.refresh();
       }
@@ -81,7 +86,7 @@ export async function activate(context: vscode.ExtensionContext) {
         globalEditStaging.setHunkDecision(proposalId, hunkId, 'rejected');
         const proposal = globalEditStaging.getProposal(proposalId);
         if (proposal && proposal.acceptedHunkIds.size + proposal.rejectedHunkIds.size === proposal.hunks.length) {
-          globalEditStaging.applyProposal(proposalId);
+          await applyProposalViaEditor(proposalId);
         }
         globalHunkCodeLensProvider.refresh();
       }
