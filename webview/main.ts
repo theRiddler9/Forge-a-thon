@@ -26,6 +26,7 @@ const attachChips = document.getElementById('attach-chips') as HTMLElement;
 let currentStreamingMessage: HTMLElement | null = null;
 let currentStreamingBody: HTMLElement | null = null;
 let streamingText = '';
+let streamingThinkingBody: HTMLElement | null = null;
 let activeModelLabel = '';
 let fallbackMode = false;
 
@@ -35,6 +36,19 @@ vscode.postMessage({ type: 'getModels' });
 function showWelcome() {
   welcomeState.style.display = 'flex';
   chatLog.style.display = 'none';
+}
+
+function ensureThinkingBody(): HTMLElement | null {
+  if (streamingThinkingBody && currentStreamingMessage?.contains(streamingThinkingBody)) {
+    return streamingThinkingBody;
+  }
+  if (!currentStreamingMessage) return null;
+  const wrapper = document.createElement('details');
+  wrapper.className = 'thinking-block';
+  wrapper.innerHTML = '<summary>Model thinking…</summary><pre class="thinking-text"></pre>';
+  currentStreamingMessage.appendChild(wrapper);
+  streamingThinkingBody = wrapper.querySelector('.thinking-text') as HTMLElement;
+  return streamingThinkingBody;
 }
 
 function showChat() {
@@ -456,6 +470,7 @@ function handleSend() {
   showChat();
   resetToolLog();
   streamingText = '';
+  streamingThinkingBody = null;
   appendMessage('user', text);
   promptInput.value = '';
   renderAttachChips();
@@ -495,6 +510,7 @@ resetSessionBtn.addEventListener('click', () => {
   chatLog.innerHTML = '';
   resetToolLog();
   streamingText = '';
+  streamingThinkingBody = null;
   setFallbackMode(false);
   showWelcome();
   vscode.postMessage({ type: 'resetSession' });
@@ -663,6 +679,17 @@ window.addEventListener('message', (event) => {
       currentStreamingBody.textContent += msg.text;
       chatLog.scrollTop = chatLog.scrollHeight;
       break;
+
+    case 'reasoningDelta': {
+      // Reasoning models stream chain-of-thought separately from the answer;
+      // show it in a collapsible, muted block rather than the main bubble.
+      const pre = ensureThinkingBody();
+      if (pre) {
+        pre.textContent += msg.text;
+        chatLog.scrollTop = chatLog.scrollHeight;
+      }
+      break;
+    }
 
     case 'toolCall':
       appendToolCard(msg.name, msg.args, msg.isDestructive);
