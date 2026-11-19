@@ -154,8 +154,12 @@ export function registerInlineEditCommand(
           }
 
           if (outcome.status === 'error') {
+            const raw = outcome.message ?? 'model request failed';
+            const hint = /429|rate/i.test(raw)
+              ? ' Please try again in ~30s once provider quota replenishes.'
+              : ' Please verify server connectivity and try again.';
             vscode.window.showErrorMessage(
-              `Inline edit failed: ${outcome.message ?? 'model request failed'}. Workspace unchanged (0 files modified).`
+              `Inline edit failed: ${raw}.${hint} Workspace unchanged (0 files modified).`
             );
           }
         } catch (err: any) {

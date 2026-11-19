@@ -353,15 +353,29 @@ CRITICAL EDITING & SAFETY RULES:
       this.sessionTokens += outcome.metrics?.inputTokens ?? 0;
       this._postContextUsage();
       if (outcome.status === 'error') {
+        const rawMsg = outcome.message ?? 'The model request failed.';
+        let userFriendlyNotice = '';
+        if (/429|rate\s*limit/i.test(rawMsg)) {
+          userFriendlyNotice = '\n\n💡 Tip: Upstream rate limit reached. Please wait ~30 seconds for quota replenishment and try again, or configure a higher-quota model in TrueForge Settings.';
+        } else if (/connect|econnrefused|network|timeout/i.test(rawMsg)) {
+          userFriendlyNotice = '\n\n💡 Tip: Temporary network or server connectivity issue. Please verify TrueForge is running and try again.';
+        } else {
+          userFriendlyNotice = '\n\n💡 Tip: The upstream AI model failed to complete the turn. Please try again shortly.';
+        }
+
         this.postMessage({
           type: 'error',
-          message: `${outcome.message ?? 'The model request failed.'}\nWorkspace unchanged (0 files modified).`,
+          message: `${rawMsg}${userFriendlyNotice}\n\nWorkspace unchanged (0 files modified).`,
         });
       } else {
         this.postMessage({ type: 'turnDone', status: outcome.status });
       }
     } catch (err: any) {
-      this.postMessage({ type: 'error', message: err.message });
+      const msg = err.message ?? String(err);
+      this.postMessage({
+        type: 'error',
+        message: `${msg}\n\n💡 Tip: AI agent turn interrupted due to server connectivity or model limits. Workspace unchanged (0 files modified).`,
+      });
     }
   }
 
