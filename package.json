@@ -71,12 +71,12 @@
         },
         "forgepilot.primaryModel": {
           "type": "string",
-          "default": "nvidia/nvidia-nemotron-3-super-120b-a-12b",
+          "default": "groq/openai-gpt-oss-120b",
           "description": "Primary model name configured in TrueForge"
         },
         "forgepilot.fallbackModel": {
           "type": "string",
-          "default": "groq/llama-3-3-70b-versatile",
+          "default": "groq/openai-gpt-oss-20b",
           "description": "Fallback model name configured in TrueForge"
         },
         "forgepilot.tokenBudget": {

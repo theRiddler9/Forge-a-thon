@@ -1,6 +1,6 @@
 {
   "forgepilot.serverUrl": "http://localhost:8790",
-  "forgepilot.primaryModel": "nvidia/nvidia-nemotron-3-super-120b-a-12b",
-  "forgepilot.fallbackModel": "groq/llama-3-3-70b-versatile",
+  "forgepilot.primaryModel": "groq/openai-gpt-oss-120b",
+  "forgepilot.fallbackModel": "groq/openai-gpt-oss-20b",
   "forgepilot.tokenBudget": 30000
 }

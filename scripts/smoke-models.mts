@@ -1,13 +1,11 @@
 import { TrueForge } from '@truefoundry/trueforge-sdk';
 
 const MODELS = [
-  'nvidia/nemotron-3-super-120b-a12b', // value currently in .vscode/settings.json
-  'nvidia/nvidia-nemotron-3-super-120b-a-12b', // value actually registered in TrueForge
-  'groq/llama-3-3-70b-versatile',
-  'google-gemini/gemini-3-8-flash',
+  'groq/openai-gpt-oss-120b',
+  'groq/openai-gpt-oss-20b',
 ];
 
-const client = new TrueForge({ baseUrl: 'http://localhost:8790', timeoutInSeconds: 90 });
+const client = new TrueForge({ baseUrl: 'http://localhost:8790', timeoutInSeconds: 120 });
 
 (async () => {
   for (const model of MODELS) {
@@ -28,19 +26,15 @@ const client = new TrueForge({ baseUrl: 'http://localhost:8790', timeoutInSecond
       let status = 'unknown';
       for await (const { data: event } of stream.withMetadata()) {
         const e: any = event;
-        if (e.type === 'model.message.delta') {
-          const t = e.delta?.content?.[0]?.text ?? e.delta?.text ?? '';
-          text += t;
-        } else if (e.type === 'model.message' && Array.isArray(e.content)) {
-          for (const p of e.content) if (p?.text) text += p.text;
+        if (e.type === 'model.message.delta' && typeof e.content === 'string') {
+          text += e.content;
         } else if (e.type === 'turn.done') {
           status = e.state?.status ?? 'done';
+          const out = e.state?.output;
+          if (!text && typeof out?.content === 'string') text = out.content;
           if (Array.isArray(e.state?.requiredActions) && e.state.requiredActions.length) {
             status += ` (requiredActions=${e.state.requiredActions.length})`;
           }
-          break;
-        } else if (e.type === 'turn.error' || e.type === 'error') {
-          status = `error: ${e.message ?? JSON.stringify(e).slice(0, 200)}`;
           break;
         }
       }
