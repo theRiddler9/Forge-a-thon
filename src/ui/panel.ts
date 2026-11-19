@@ -99,6 +99,12 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
           this.postMessage({ type: 'status', model: this.client.getActiveModel() });
           this._postContextUsage();
           break;
+        case 'pickFileMention':
+          await this._pickFileMention();
+          break;
+        case 'pickSymbolMention':
+          await this._pickSymbolMention();
+          break;
         case 'sendMessage':
           await this._handleUserMessage(data.text);
           break;
@@ -372,6 +378,88 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
         decision,
         decision === 'deny' ? 'Rejected by user in ForgePilot diff review' : undefined
       );
+    }
+  }
+
+  private async _pickFileMention() {
+    const exclude =
+      '{**/node_modules/**,**/.git/**,**/dist/**,**/out/**,**/build/**,**/.venv/**,**/venv/**,**/__pycache__/**,**/.pytest_cache/**,**/*.{png,jpg,jpeg,gif,ico,webp,svg,woff,woff2,ttf,eot,map,lock,vsix,egg-info}}';
+    try {
+      const uris = await vscode.workspace.findFiles('**/*', exclude, 1000);
+      if (uris.length === 0) {
+        vscode.window.showInformationMessage('ForgePilot: No attachable files found in this workspace.');
+        return;
+      }
+      const items = uris
+        .map((f) => {
+          const rel = vscode.workspace.asRelativePath(f, false).replace(/\\/g, '/');
+          return {
+            label: rel.split('/').pop() ?? rel,
+            description: rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '',
+            rel,
+          };
+        })
+        .sort((a, b) => a.rel.localeCompare(b.rel));
+      const pick = await vscode.window.showQuickPick(items, {
+        placeHolder: `Attach @file — pick a file (${items.length}${uris.length >= 1000 ? '+' : ''} shown, type to filter)`,
+        matchOnDescription: true,
+      });
+      if (pick) {
+        this.postMessage({ type: 'insertMention', mention: `@file:${pick.rel}` });
+      }
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`ForgePilot: Could not list workspace files: ${err.message}`);
+    }
+  }
+
+  private async _pickSymbolMention() {
+    try {
+      let symbols =
+        (await vscode.commands.executeCommand<vscode.SymbolInformation[]>(
+          'vscode.executeWorkspaceSymbolProvider',
+          ''
+        )) ?? [];
+      if (symbols.length === 0) {
+        const q = await vscode.window.showInputBox({
+          prompt: 'Symbol name to attach (e.g. get_debug_flag)',
+          placeHolder: 'workspace symbol…',
+        });
+        if (!q) return;
+        symbols =
+          (await vscode.commands.executeCommand<vscode.SymbolInformation[]>(
+            'vscode.executeWorkspaceSymbolProvider',
+            q
+          )) ?? [];
+        if (symbols.length === 0) {
+          vscode.window.showInformationMessage(`ForgePilot: No symbols matching "${q}".`);
+          return;
+        }
+      }
+      const items = symbols
+        .slice(0, 500)
+        .map((s) => {
+          const rel = s.location?.uri
+            ? vscode.workspace.asRelativePath(s.location.uri, false).replace(/\\/g, '/')
+            : '';
+          const line = s.location?.range?.start?.line != null ? s.location.range.start.line + 1 : 0;
+          return {
+            label: s.name,
+            description: vscode.SymbolKind[s.kind] ?? String(s.kind),
+            detail: `${rel}${line ? `:${line}` : ''}`,
+            sym: s,
+          };
+        })
+        .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+      const pick = await vscode.window.showQuickPick(items, {
+        placeHolder: `Attach @symbol — pick a symbol (${items.length} shown, type to filter)`,
+        matchOnDetail: true,
+      });
+      if (pick) {
+        const name = pick.sym.name.replace(/\s+/g, '');
+        this.postMessage({ type: 'insertMention', mention: `@symbol:${name}` });
+      }
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`ForgePilot: Could not list workspace symbols: ${err.message}`);
     }
   }
 
