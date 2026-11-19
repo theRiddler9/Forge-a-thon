@@ -198,6 +198,19 @@ hunks, accept, then verify with `pytest tests/test_cli.py -q`.
 Settings, repeat Task A, and watch the client retry with backoff and replay on
 the fallback model. `git status` stays clean throughout.
 
+## Task-Wise Demonstrations & Screenshots
+
+### Task A — Inline Edit (`Ctrl+K Ctrl+I`)
+Side-by-side diff review with per-hunk Accept/Reject in `src/flask/helpers.py`:
+
+![Task A Inline Edit Demonstration](docs/screenshots/task-a.png)
+
+### Task B — Autonomous Agent Mode
+*(Screenshot will be attached after live run)*
+
+### Task C — Resilience & Automatic Model Fallback
+*(Screenshot will be attached after live run)*
+
 ## Running the tests
 
 ```bash
@@ -227,6 +240,7 @@ green while flagging the flaw until it is repaired.
 npx tsx scripts/probe-trueforge.ts                 # check TrueForge reachability/models
 npx tsx scripts/verify-task-a.ts <flask-repo-path> # scripted Task A checks
 npx tsx scripts/verify-task-b.ts <flask-repo-path> # scripted Task B checks
+npx tsx scripts/verify-task-c.ts <flask-repo-path> # scripted Task C resilience & fallback checks
 ```
 
 ## Models and cost
