@@ -22,6 +22,19 @@ const sessionLabel = document.getElementById('session-label') as HTMLElement;
 const chipFile = document.getElementById('chip-file') as HTMLElement;
 const chipSymbol = document.getElementById('chip-symbol') as HTMLElement;
 const attachChips = document.getElementById('attach-chips') as HTMLElement;
+const mcpToolsBtn = document.getElementById('mcp-tools-btn') as HTMLElement | null;
+const mcpPopover = document.getElementById('mcp-tools-popover') as HTMLElement | null;
+
+function toggleMcpPopover(force?: boolean) {
+  if (!mcpPopover) return;
+  const hidden = mcpPopover.hasAttribute('hidden');
+  const nextHidden = force === undefined ? !hidden : !force;
+  if (nextHidden) {
+    mcpPopover.setAttribute('hidden', '');
+  } else {
+    mcpPopover.removeAttribute('hidden');
+  }
+}
 
 let currentStreamingMessage: HTMLElement | null = null;
 let currentStreamingBody: HTMLElement | null = null;
@@ -29,9 +42,32 @@ let streamingText = '';
 let streamingThinkingBody: HTMLElement | null = null;
 let activeModelLabel = '';
 let fallbackMode = false;
+let modelContexts: Record<string, number> = {};
+let lastBudgetUsed = 0;
 
 // Initial model sync
 vscode.postMessage({ type: 'getModels' });
+
+function fmtBudgetTokens(n: number): string {
+  return n >= 1_000_000
+    ? `${(n / 1e6).toFixed(1).replace(/\.0$/, '')}M`
+    : `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+}
+
+function renderBudget(used: number, total: number) {
+  if (!budgetValue || !budgetFill) return;
+  lastBudgetUsed = used;
+  const pct = Math.min(100, Math.round((used / total) * 100));
+  budgetValue.textContent = `${fmtBudgetTokens(used)} / ${fmtBudgetTokens(total)} tokens`;
+  budgetFill.style.width = `${pct}%`;
+  if (pct > 90) {
+    budgetFill.style.backgroundColor = '#f85149';
+  } else if (pct > 70) {
+    budgetFill.style.backgroundColor = '#d29922';
+  } else {
+    budgetFill.style.backgroundColor = '#2ea44f';
+  }
+}
 
 function showWelcome() {
   welcomeState.style.display = 'flex';
@@ -82,7 +118,7 @@ function appendMessage(sender: 'user' | 'agent', text: string, opts?: { streamin
     authorHtml = `ForgePilot${caps ? ` <span class="model-caps">${escapeHtml(caps)}</span>` : ''}`;
     rightHtml = '<span class="streaming-badge"><span class="streaming-dot"></span>Streaming</span>';
   } else {
-    authorHtml = sender === 'user' ? '👤 You' : '🤖 ForgePilot';
+    authorHtml = sender === 'user' ? 'YOU' : 'ForgePilot';
     rightHtml = escapeHtml(now);
   }
 
@@ -517,15 +553,23 @@ resetSessionBtn.addEventListener('click', () => {
 });
 
 chipFile.addEventListener('click', () => {
-  promptInput.value += '@file:';
-  promptInput.focus();
-  renderAttachChips();
+  vscode.postMessage({ type: 'pickFileMention' });
+});
+
+mcpToolsBtn?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleMcpPopover();
+});
+
+document.addEventListener('click', (e) => {
+  if (!mcpPopover || mcpPopover.hasAttribute('hidden')) return;
+  const target = e.target as HTMLElement;
+  if (target.closest('#mcp-tools-popover') || target.closest('#mcp-tools-btn')) return;
+  toggleMcpPopover(false);
 });
 
 chipSymbol.addEventListener('click', () => {
-  promptInput.value += '@symbol:';
-  promptInput.focus();
-  renderAttachChips();
+  vscode.postMessage({ type: 'pickSymbolMention' });
 });
 
 // Suggestion chips on the welcome screen prefill + send
@@ -568,6 +612,10 @@ promptInput.addEventListener('input', renderAttachChips);
 sendBtn.addEventListener('click', handleSend);
 cancelBtn.addEventListener('click', handleCancel);
 
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') toggleMcpPopover(false);
+});
+
 promptInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
@@ -580,6 +628,9 @@ window.addEventListener('message', (event) => {
   const msg = event.data;
   switch (msg.type) {
     case 'modelsList':
+      if (msg.contexts && typeof msg.contexts === 'object') {
+        modelContexts = msg.contexts;
+      }
       if (Array.isArray(msg.models) && msg.models.length > 0) {
         modelSelect.innerHTML = '';
         for (const m of msg.models) {
@@ -606,27 +657,17 @@ window.addEventListener('message', (event) => {
           }
         }
         setFallbackMode(msg.fallback === true);
+        const total = modelContexts[msg.model] ?? 32768;
+        renderBudget(lastBudgetUsed, total);
       }
       break;
 
-    case 'budgetUpdate':
-      if (budgetValue && budgetFill) {
-        const used = msg.used ?? 0;
-        const total = msg.total ?? 30000;
-        const pct = Math.min(100, Math.round((used / total) * 100));
-        const kUsed = (used / 1000).toFixed(1).replace(/\.0$/, '');
-        const kTotal = Math.round(total / 1000);
-        budgetValue.textContent = `${kUsed}k / ${kTotal}k tokens`;
-        budgetFill.style.width = `${pct}%`;
-        if (pct > 90) {
-          budgetFill.style.backgroundColor = '#f85149';
-        } else if (pct > 70) {
-          budgetFill.style.backgroundColor = '#d29922';
-        } else {
-          budgetFill.style.backgroundColor = '#2ea44f';
-        }
-      }
+    case 'budgetUpdate': {
+      const modelTotal = modelContexts[activeModelLabel] ?? 32768;
+      const total = msg.total ?? modelTotal;
+      renderBudget(msg.used ?? 0, total);
       break;
+    }
 
     case 'fallbackActivated': {
       setFallbackMode(true);
@@ -690,6 +731,15 @@ window.addEventListener('message', (event) => {
       }
       break;
     }
+
+    case 'insertMention':
+      if (typeof msg.mention === 'string' && msg.mention.length > 0) {
+        const sep = promptInput.value.trimEnd().length > 0 ? ' ' : '';
+        promptInput.value = `${promptInput.value.trimEnd()}${sep}${msg.mention} `;
+        renderAttachChips();
+        promptInput.focus();
+      }
+      break;
 
     case 'toolCall':
       appendToolCard(msg.name, msg.args, msg.isDestructive);

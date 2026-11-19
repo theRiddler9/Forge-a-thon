@@ -10,22 +10,22 @@ export async function executeProposeWrite(
   workspaceRoot: string,
   args: ProposeWriteArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  // If a proposalId is passed and already approved
-  if (args.proposalId) {
-    const applyResult = globalEditStaging.applyProposal(args.proposalId);
-    if (applyResult.success) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Successfully applied ${applyResult.appliedCount}/${applyResult.totalCount} hunks to ${applyResult.filePath}.`,
-          },
-        ],
-      };
-    }
+  // If this exact edit was already applied by the approval flow (the user
+  // clicked Apply and the extension wrote it), report that instead of
+  // staging a duplicate proposal.
+  const recent = globalEditStaging.findRecentApply(args.path, args.newContent);
+  if (recent) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Edit already applied: ${recent.appliedCount}/${recent.totalCount} hunks applied to ${recent.relativePath} after user approval. The change is on disk and tracked by the snapshot history (ForgePilot: Undo Last Applied Change).`,
+        },
+      ],
+    };
   }
 
-  // Otherwise, stage the proposal
+  // Stage the proposal for user review — nothing is written here.
   const proposal = globalEditStaging.stageProposal(
     workspaceRoot,
     args.path,
@@ -36,7 +36,7 @@ export async function executeProposeWrite(
     content: [
       {
         type: 'text',
-        text: `Edit proposed for ${proposal.relativePath} (${proposal.hunks.length} hunks). Proposal ID: ${proposal.proposalId}. Awaiting user review and approval.`,
+        text: `Edit proposed for ${proposal.relativePath} (${proposal.hunks.length} hunks). The user will review each hunk and approve or reject. Nothing touches disk until then.`,
       },
     ],
   };

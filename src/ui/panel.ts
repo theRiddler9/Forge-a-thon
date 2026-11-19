@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { TrueForgeClient } from '../trueforge/client.js';
 import { globalEditStaging } from '../edit/staging.js';
+import { applyProposalViaEditor } from '../edit/apply.js';
 import { parseMentions, resolveMentions, formatContextBlock } from '../context/mentions.js';
 import { globalContextBudget } from '../mcp/tools/contextBudget.js';
 
@@ -44,6 +45,8 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'forgepilot.agentView';
   private _view?: vscode.WebviewView;
   private currentSessionId?: string;
+  private sessionTokens = 0;
+  private modelContexts = new Map<string, number>();
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -79,19 +82,29 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
         case 'selectModel':
           this.client.setActiveModel(data.model);
           this.currentSessionId = undefined; // Reset session to use newly chosen model
+          this.sessionTokens = 0;
           this.postMessage({
             type: 'status',
             model: data.model,
           });
           this.postMessage({ type: 'session', label: 'Fresh Session' });
+          this._postContextUsage();
           break;
         case 'resetSession':
           this.currentSessionId = undefined;
+          this.sessionTokens = 0;
           globalEditStaging.clearAll();
           globalContextBudget.reset();
           this._refreshBudget();
           this.postMessage({ type: 'session', label: 'Fresh Session' });
           this.postMessage({ type: 'status', model: this.client.getActiveModel() });
+          this._postContextUsage();
+          break;
+        case 'pickFileMention':
+          await this._pickFileMention();
+          break;
+        case 'pickSymbolMention':
+          await this._pickSymbolMention();
           break;
         case 'sendMessage':
           await this._handleUserMessage(data.text);
@@ -112,10 +125,14 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
   }
 
   private async _refreshModels() {
-    const models = await this.client.listAvailableModels();
+    const models = await this.client.listModelsDetailed();
+    this.modelContexts = new Map(
+      models.map((m) => [m.name, m.contextLength ?? 32768] as [string, number])
+    );
     this.postMessage({
       type: 'modelsList',
-      models,
+      models: models.map((m) => m.name),
+      contexts: Object.fromEntries(models.map((m) => [m.name, m.contextLength ?? 32768])),
       activeModel: this.client.getActiveModel(),
     });
     this.postMessage({
@@ -123,6 +140,17 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
       model: this.client.getActiveModel(),
     });
     this._refreshBudget();
+    this._postContextUsage();
+  }
+
+  private _postContextUsage() {
+    const total = this.modelContexts.get(this.client.getActiveModel()) ?? 32768;
+    this.postMessage({
+      type: 'budgetUpdate',
+      used: this.sessionTokens,
+      total,
+      scope: 'session',
+    });
   }
 
   private _refreshBudget() {
@@ -297,6 +325,8 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
       }
 
       this._refreshBudget();
+      this.sessionTokens += outcome.metrics?.inputTokens ?? 0;
+      this._postContextUsage();
       if (outcome.status === 'error') {
         this.postMessage({
           type: 'error',
@@ -328,15 +358,23 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
     const resolvedToolCallId = toolCallId ?? proposal?.toolCallId;
 
     if (decision === 'allow') {
-      // Apply ONLY the hunks the user accepted (not a blanket accept-all)
-      const result = globalEditStaging.applyProposal(proposalId);
-      this.postMessage({
-        type: 'proposalApplied',
-        proposalId,
-        appliedCount: result.appliedCount,
-        totalCount: result.totalCount,
-        filePath: result.filePath,
-      });
+      // Apply ONLY the hunks the user accepted (not a blanket accept-all).
+      // Every write flows through the editor (WorkspaceEdit + save).
+      const result = await applyProposalViaEditor(proposalId);
+      if (!result.ok) {
+        this.postMessage({
+          type: 'error',
+          message: `Could not apply the edits: ${result.reason}. No files were changed.`,
+        });
+      } else {
+        this.postMessage({
+          type: 'proposalApplied',
+          proposalId,
+          appliedCount: result.appliedCount,
+          totalCount: result.totalCount,
+          filePath: result.relativePath,
+        });
+      }
     } else {
       globalEditStaging.discardProposal(proposalId);
       this.postMessage({ type: 'proposalApplied', proposalId, appliedCount: 0, totalCount: 0, filePath: proposal?.relativePath });
@@ -349,6 +387,88 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
         decision,
         decision === 'deny' ? 'Rejected by user in ForgePilot diff review' : undefined
       );
+    }
+  }
+
+  private async _pickFileMention() {
+    const exclude =
+      '{**/node_modules/**,**/.git/**,**/dist/**,**/out/**,**/build/**,**/.venv/**,**/venv/**,**/__pycache__/**,**/.pytest_cache/**,**/*.{png,jpg,jpeg,gif,ico,webp,svg,woff,woff2,ttf,eot,map,lock,vsix,egg-info}}';
+    try {
+      const uris = await vscode.workspace.findFiles('**/*', exclude, 1000);
+      if (uris.length === 0) {
+        vscode.window.showInformationMessage('ForgePilot: No attachable files found in this workspace.');
+        return;
+      }
+      const items = uris
+        .map((f) => {
+          const rel = vscode.workspace.asRelativePath(f, false).replace(/\\/g, '/');
+          return {
+            label: rel.split('/').pop() ?? rel,
+            description: rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '',
+            rel,
+          };
+        })
+        .sort((a, b) => a.rel.localeCompare(b.rel));
+      const pick = await vscode.window.showQuickPick(items, {
+        placeHolder: `Attach @file — pick a file (${items.length}${uris.length >= 1000 ? '+' : ''} shown, type to filter)`,
+        matchOnDescription: true,
+      });
+      if (pick) {
+        this.postMessage({ type: 'insertMention', mention: `@file:${pick.rel}` });
+      }
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`ForgePilot: Could not list workspace files: ${err.message}`);
+    }
+  }
+
+  private async _pickSymbolMention() {
+    try {
+      let symbols =
+        (await vscode.commands.executeCommand<vscode.SymbolInformation[]>(
+          'vscode.executeWorkspaceSymbolProvider',
+          ''
+        )) ?? [];
+      if (symbols.length === 0) {
+        const q = await vscode.window.showInputBox({
+          prompt: 'Symbol name to attach (e.g. get_debug_flag)',
+          placeHolder: 'workspace symbol…',
+        });
+        if (!q) return;
+        symbols =
+          (await vscode.commands.executeCommand<vscode.SymbolInformation[]>(
+            'vscode.executeWorkspaceSymbolProvider',
+            q
+          )) ?? [];
+        if (symbols.length === 0) {
+          vscode.window.showInformationMessage(`ForgePilot: No symbols matching "${q}".`);
+          return;
+        }
+      }
+      const items = symbols
+        .slice(0, 500)
+        .map((s) => {
+          const rel = s.location?.uri
+            ? vscode.workspace.asRelativePath(s.location.uri, false).replace(/\\/g, '/')
+            : '';
+          const line = s.location?.range?.start?.line != null ? s.location.range.start.line + 1 : 0;
+          return {
+            label: s.name,
+            description: vscode.SymbolKind[s.kind] ?? String(s.kind),
+            detail: `${rel}${line ? `:${line}` : ''}`,
+            sym: s,
+          };
+        })
+        .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+      const pick = await vscode.window.showQuickPick(items, {
+        placeHolder: `Attach @symbol — pick a symbol (${items.length} shown, type to filter)`,
+        matchOnDetail: true,
+      });
+      if (pick) {
+        const name = pick.sym.name.replace(/\s+/g, '');
+        this.postMessage({ type: 'insertMention', mention: `@symbol:${name}` });
+      }
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`ForgePilot: Could not list workspace symbols: ${err.message}`);
     }
   }
 

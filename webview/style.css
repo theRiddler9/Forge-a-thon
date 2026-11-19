@@ -829,6 +829,7 @@ button {
 .proposal-review {
   background-color: var(--bg-card);
   border: 1px solid var(--border);
+  border-left: 3px solid var(--amber);
   border-radius: 8px;
   overflow: hidden;
   margin: 2px 0;
@@ -960,14 +961,27 @@ button {
 .proposal-outcome.applied { color: var(--diff-add-fg); }
 .proposal-outcome.rejected { color: var(--diff-del-fg); }
 
-/* User bubble contrast per Figma */
+/* User bubble contrast per Figma (3px blue left border) */
 .message.user {
-  background-color: rgba(47, 129, 247, 0.16);
-  border: 1px solid rgba(47, 129, 247, 0.38);
-  color: #e8e8e8;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  color: var(--fg-primary);
+  border-radius: 6px;
+  align-self: flex-start;
+  width: 100%;
+  max-width: 100%;
 }
 
-.message.user .msg-time { color: #9da7b3; }
+.message.user .msg-author {
+  color: var(--fg-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.message.user .msg-time { color: var(--fg-secondary); }
 
 /* ===== Figma redesign: fallback recovery state ===== */
 .fallback-banner {
@@ -1087,4 +1101,95 @@ button {
   max-height: 120px;
   overflow-y: auto;
   font-family: inherit;
+}
+
+/* ===== MCP tools popover ===== */
+.mcp-tools-popover {
+  position: fixed;
+  bottom: 76px;
+  right: 10px;
+  width: 264px;
+  background-color: #252526;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 40;
+  overflow: hidden;
+  animation: fadeIn 0.15s ease-in-out;
+}
+
+.mcp-tools-title {
+  padding: 7px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--fg-secondary);
+  border-bottom: 1px solid var(--border);
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.mcp-tools-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mcp-tools-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 5px;
+}
+
+.mcp-tools-list li:hover {
+  background-color: var(--bg-hover);
+}
+
+.mcp-tools-list code {
+  font-size: 10.5px;
+  color: #79b8ff;
+  min-width: 148px;
+}
+
+.mcp-tools-list span {
+  flex: 1;
+  font-size: 9.5px;
+  color: var(--fg-secondary);
+}
+
+.mcp-tools-list .badge {
+  display: inline-block;
+  font-style: normal;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  border-radius: 3px;
+  padding: 0 4px;
+  vertical-align: 1px;
+  margin-left: 4px;
+}
+
+.badge.ro {
+  color: var(--diff-add-fg);
+  background-color: rgba(63, 185, 80, 0.15);
+  border: 1px solid rgba(63, 185, 80, 0.4);
+}
+
+.badge.gate {
+  color: var(--amber);
+  background-color: rgba(210, 153, 34, 0.15);
+  border: 1px solid rgba(210, 153, 34, 0.4);
+}
+
+.mcp-tools-foot {
+  padding: 6px 10px;
+  font-size: 9px;
+  color: var(--fg-secondary);
+  border-top: 1px solid var(--border);
+  background-color: rgba(255, 255, 255, 0.02);
 }
