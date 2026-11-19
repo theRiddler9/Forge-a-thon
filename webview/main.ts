@@ -105,7 +105,7 @@ function appendMessage(sender: 'user' | 'agent', text: string, opts?: { streamin
     authorHtml = `ForgePilot${caps ? ` <span class="model-caps">${escapeHtml(caps)}</span>` : ''}`;
     rightHtml = '<span class="streaming-badge"><span class="streaming-dot"></span>Streaming</span>';
   } else {
-    authorHtml = sender === 'user' ? '👤 You' : '🤖 ForgePilot';
+    authorHtml = sender === 'user' ? 'YOU' : 'ForgePilot';
     rightHtml = escapeHtml(now);
   }
 

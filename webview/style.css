@@ -829,6 +829,7 @@ button {
 .proposal-review {
   background-color: var(--bg-card);
   border: 1px solid var(--border);
+  border-left: 3px solid var(--amber);
   border-radius: 8px;
   overflow: hidden;
   margin: 2px 0;
@@ -960,14 +961,27 @@ button {
 .proposal-outcome.applied { color: var(--diff-add-fg); }
 .proposal-outcome.rejected { color: var(--diff-del-fg); }
 
-/* User bubble contrast per Figma */
+/* User bubble contrast per Figma (3px blue left border) */
 .message.user {
-  background-color: rgba(47, 129, 247, 0.16);
-  border: 1px solid rgba(47, 129, 247, 0.38);
-  color: #e8e8e8;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  color: var(--fg-primary);
+  border-radius: 6px;
+  align-self: flex-start;
+  width: 100%;
+  max-width: 100%;
 }
 
-.message.user .msg-time { color: #9da7b3; }
+.message.user .msg-author {
+  color: var(--fg-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.message.user .msg-time { color: var(--fg-secondary); }
 
 /* ===== Figma redesign: fallback recovery state ===== */
 .fallback-banner {
