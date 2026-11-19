@@ -26,6 +26,8 @@ const attachChips = document.getElementById('attach-chips') as HTMLElement;
 let currentStreamingMessage: HTMLElement | null = null;
 let currentStreamingBody: HTMLElement | null = null;
 let streamingText = '';
+let activeModelLabel = '';
+let fallbackMode = false;
 
 // Initial model sync
 vscode.postMessage({ type: 'getModels' });
@@ -40,17 +42,40 @@ function showChat() {
   chatLog.style.display = 'flex';
 }
 
-function appendMessage(sender: 'user' | 'agent', text: string): HTMLElement {
+function modelCaps(): string {
+  const short = (activeModelLabel || '').split('/').pop() || '';
+  return short.toUpperCase();
+}
+
+function setFallbackMode(active: boolean) {
+  fallbackMode = active;
+  modelSelect.classList.toggle('fallback-model', active);
+  for (let i = 0; i < modelSelect.options.length; i++) {
+    const opt = modelSelect.options[i];
+    opt.textContent = opt.value.replace(/ \(fallback\)$/, '') + (active && opt.selected ? ' (fallback)' : '');
+  }
+}
+
+function appendMessage(sender: 'user' | 'agent', text: string, opts?: { streaming?: boolean }): HTMLElement {
   const msg = document.createElement('div');
   msg.className = `message ${sender}`;
 
   const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const author = sender === 'user' ? '👤 You' : '🤖 ForgePilot';
+  let authorHtml: string;
+  let rightHtml: string;
+  if (sender === 'agent' && opts?.streaming) {
+    const caps = modelCaps();
+    authorHtml = `ForgePilot${caps ? ` <span class="model-caps">${escapeHtml(caps)}</span>` : ''}`;
+    rightHtml = '<span class="streaming-badge"><span class="streaming-dot"></span>Streaming</span>';
+  } else {
+    authorHtml = sender === 'user' ? '👤 You' : '🤖 ForgePilot';
+    rightHtml = escapeHtml(now);
+  }
 
   msg.innerHTML = `
     <div class="msg-header">
-      <span class="msg-author">${escapeHtml(author)}</span>
-      <span class="msg-time">${now}</span>
+      <span class="msg-author">${authorHtml}</span>
+      <span class="msg-time">${rightHtml}</span>
     </div>
     <div class="msg-body">${formatMessageBody(text)}</div>
   `;
@@ -437,7 +462,7 @@ function handleSend() {
   cancelBtn.style.display = 'inline-flex';
   sendBtn.disabled = true;
 
-  currentStreamingMessage = appendMessage('agent', '');
+  currentStreamingMessage = appendMessage('agent', '', { streaming: true });
   currentStreamingBody = currentStreamingMessage.querySelector('.msg-body');
 
   vscode.postMessage({ type: 'sendMessage', text });
@@ -448,6 +473,8 @@ function handleCancel() {
   cancelBtn.style.display = 'none';
   sendBtn.disabled = false;
   if (currentStreamingBody) {
+    const badge = currentStreamingMessage?.querySelector('.streaming-badge');
+    if (badge) badge.outerHTML = 'Cancelled';
     currentStreamingBody.innerHTML += '<br/><span style="color: #ff9800;">[⏹ Turn cancelled by user. Workspace remains 100% clean.]</span>';
     currentStreamingMessage = null;
     currentStreamingBody = null;
@@ -468,6 +495,7 @@ resetSessionBtn.addEventListener('click', () => {
   chatLog.innerHTML = '';
   resetToolLog();
   streamingText = '';
+  setFallbackMode(false);
   showWelcome();
   vscode.postMessage({ type: 'resetSession' });
 });
@@ -547,19 +575,44 @@ window.addEventListener('message', (event) => {
           }
           modelSelect.appendChild(opt);
         }
+        if (msg.activeModel) activeModelLabel = msg.activeModel;
+        setFallbackMode(fallbackMode);
       }
       break;
 
     case 'status':
       if (msg.model) {
+        activeModelLabel = msg.model;
         for (let i = 0; i < modelSelect.options.length; i++) {
           if (modelSelect.options[i].value === msg.model) {
             modelSelect.selectedIndex = i;
             break;
           }
         }
+        setFallbackMode(msg.fallback === true);
       }
       break;
+
+    case 'fallbackActivated': {
+      setFallbackMode(true);
+      const banner = document.createElement('div');
+      banner.className = 'fallback-banner';
+      const to = escapeHtml(String(msg.to ?? 'fallback model'));
+      const maxRetries = msg.maxRetries ?? 3;
+      const attempts = msg.attempts ?? maxRetries;
+      banner.innerHTML = `
+        <div class="fallback-banner-header">
+          <span class="fallback-banner-title">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            FALLBACK ACTIVATED
+          </span>
+          <span class="fallback-banner-retry">Retry ${attempts}/${maxRetries}</span>
+        </div>
+        <div class="fallback-banner-body">Primary model unreachable — re-routed automatically to <strong>${to}</strong>. Workspace unchanged (0 files modified).</div>`;
+      chatLog.appendChild(banner);
+      chatLog.scrollTop = chatLog.scrollHeight;
+      break;
+    }
 
     case 'session':
       if (sessionLabel) {
@@ -605,6 +658,10 @@ window.addEventListener('message', (event) => {
     case 'turnDone': {
       cancelBtn.style.display = 'none';
       sendBtn.disabled = false;
+      if (currentStreamingMessage) {
+        const badge = currentStreamingMessage.querySelector('.streaming-badge');
+        if (badge) badge.outerHTML = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
       if (currentStreamingBody) {
         currentStreamingBody.innerHTML = formatMessageBody(currentStreamingBody.textContent || '');
       }
