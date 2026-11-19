@@ -63,7 +63,7 @@ export function registerInlineEditCommand(
             onToolApprovalRequired: async (toolCallId: string, toolName: string, args: any) => {
               if (toolName !== 'propose_write') return;
 
-              let fullNewContent = args.newContent ?? '';
+              let fullNewContent = args.newContent ?? args.new_content ?? '';
               // If the model returned only the modified function or snippet, splice it into the full document
               if (
                 fullDocText.includes(selectedText) &&
@@ -77,7 +77,7 @@ export function registerInlineEditCommand(
 
               const proposal = globalEditStaging.stageProposal(
                 workspaceRoot,
-                args.path || filePath,
+                args.path || args.filePath || filePath,
                 fullNewContent,
                 toolCallId
               );

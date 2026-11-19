@@ -182,7 +182,7 @@ describe('TrueForgeClient stream e2e (mock SSE server)', () => {
     expect(doneStatus).toBe('done');
   });
 
-  it.fails('surfaces tool.approval_required with toolCallId, name and args', async () => {
+  it('surfaces tool.approval_required with toolCallId, name and args', async () => {
     // KNOWN BUGS this exposes in client.ts streamTurn:
     //  1. reads event.toolCallId / event.sourceEventId, but the real
     //     ToolApprovalRequiredEvent carries tool_calls:[{id, source_event_id}]
@@ -238,7 +238,7 @@ describe('TrueForgeClient stream e2e (mock SSE server)', () => {
     expect(approvals[0].args).toMatchObject({ path: 'a.py' });
   });
 
-  it.fails('approval lookup survives interleaved model.message.delta events', async () => {
+  it('approval lookup survives interleaved model.message.delta events', async () => {
     const approvals: Array<{ id?: string; name: string }> = [];
 
     mock = await startMockTrueForge({

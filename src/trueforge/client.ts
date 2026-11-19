@@ -229,9 +229,12 @@ export class TrueForgeClient {
         }
 
         if (isEventDelta(event)) {
-          const existing = eventsMap.get(event.id);
-          const merged = existing ? mergeEventDelta(existing, event) : event;
-          eventsMap.set(event.id, merged);
+          let existing = eventsMap.get(event.id);
+          if (!existing) {
+            existing = { id: event.id, type: 'model.message', content: '', toolCalls: [] };
+            eventsMap.set(event.id, existing);
+          }
+          mergeEventDelta(existing, event);
 
           // Reasoning models (e.g. gpt-oss) stream reasoningContent deltas
           // separately from content deltas. TrueForge flattens the OpenAI
@@ -257,11 +260,26 @@ export class TrueForgeClient {
 
         // Check for tool approval requirement
         if ((event as any).type === 'tool.approval_required') {
-          const toolCallId = (event as any).toolCallId;
-          const sourceEvent = eventsMap.get((event as any).sourceEventId);
-          const toolCall = sourceEvent?.toolCalls?.find((tc: any) => tc.id === toolCallId);
-          if (callbacks.onToolApprovalRequired) {
-            callbacks.onToolApprovalRequired(toolCallId, toolCall?.name ?? 'unknown', toolCall?.arguments ?? {});
+          const rawCalls = (event as any).toolCalls ?? (event as any).tool_calls ?? [];
+          const callsList = Array.isArray(rawCalls) && rawCalls.length > 0 ? rawCalls : [(event as any)];
+          for (const call of callsList) {
+            const toolCallId = call.id ?? (event as any).toolCallId;
+            const sourceEventId = call.sourceEventId ?? call.source_event_id ?? (event as any).sourceEventId;
+            const sourceEvent = eventsMap.get(sourceEventId);
+            const rawTools = sourceEvent?.toolCalls ?? sourceEvent?.tool_calls ?? [];
+            const toolCall = rawTools.find((tc: any) => tc.id === toolCallId);
+            const toolName = toolCall?.name ?? toolCall?.function?.name ?? 'unknown';
+            let toolArgs = toolCall?.arguments ?? toolCall?.function?.arguments ?? {};
+            if (typeof toolArgs === 'string') {
+              try {
+                toolArgs = JSON.parse(toolArgs);
+              } catch {
+                toolArgs = {};
+              }
+            }
+            if (callbacks.onToolApprovalRequired) {
+              callbacks.onToolApprovalRequired(toolCallId, toolName, toolArgs);
+            }
           }
         }
 
