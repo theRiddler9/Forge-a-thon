@@ -5,6 +5,40 @@ import { TrueForgeClient } from '../trueforge/client.js';
 import { globalEditStaging } from '../edit/staging.js';
 import { parseMentions, resolveMentions, formatContextBlock } from '../context/mentions.js';
 
+function extractToolResponseText(event: any): string {
+  if (!event) return '';
+  if (typeof event.content === 'string') return event.content;
+  if (typeof event.output === 'string') return event.output;
+  if (typeof event.result === 'string') return event.result;
+  const candidates = [event.content, event.output, event.result];
+  for (const c of candidates) {
+    if (c && typeof c === 'object') {
+      try {
+        if (Array.isArray(c)) {
+          return c.map((p: any) => p?.text ?? p?.content ?? JSON.stringify(p)).join('\n');
+        }
+        if (Array.isArray(c.content)) {
+          return c.content.map((p: any) => p?.text ?? p?.content ?? JSON.stringify(p)).join('\n');
+        }
+        return JSON.stringify(c);
+      } catch {
+        return '';
+      }
+    }
+  }
+  return '';
+}
+
+function makeToolBadge(name: string, resultText: string, durationMs?: number): string {
+  const lower = (name || '').toLowerCase();
+  const lineCount = resultText ? resultText.split('\n').filter((l) => l.trim().length > 0).length : 0;
+  if (lower.includes('read_file') && lineCount > 0) return `${lineCount} lines`;
+  if (lower.includes('search_text') && lineCount > 0) return `${lineCount} hits`;
+  if (lower.includes('list_dir') && lineCount > 0) return `${lineCount} items`;
+  if (typeof durationMs === 'number') return `${Math.max(1, Math.round(durationMs))}ms`;
+  return '';
+}
+
 export class AgentViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'forgepilot.agentView';
   private _view?: vscode.WebviewView;
@@ -35,6 +69,12 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
         case 'getModels':
           await this._refreshModels();
           break;
+        case 'openFile':
+          await this._openFile(data.path, data.line);
+          break;
+        case 'openDiff':
+          await this._openDiff(data.proposalId);
+          break;
         case 'selectModel':
           this.client.setActiveModel(data.model);
           this.currentSessionId = undefined; // Reset session to use newly chosen model
@@ -60,7 +100,7 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
           globalEditStaging.setHunkDecision(data.proposalId, data.hunkId, data.decision);
           break;
         case 'proposalDecision':
-          await this._handleProposalDecision(data.proposalId, data.decision);
+          await this._handleProposalDecision(data.proposalId, data.decision, data.toolCallId);
           break;
       }
     });
@@ -96,6 +136,7 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
         this.postMessage({
           type: 'contextChosen',
           text: contextBlock,
+          items: resolvedContext.map((it) => ({ type: it.type, target: it.target, reason: it.reason, tokens: it.tokens })),
         });
       }
 
@@ -118,7 +159,53 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
       }
 
       // 3. Stream turn
+      const toolCalls = new Map<string, { name: string; args: any; start: number }>();
       await this.client.streamTurn(this.currentSessionId!, fullPrompt, {
+        onEvent: (event: any) => {
+          const type = event?.type;
+          if (type === 'model.message' && Array.isArray(event?.toolCalls)) {
+            for (const tc of event.toolCalls) {
+              toolCalls.set(tc.id, { name: tc?.name ?? 'tool', args: tc?.arguments ?? {}, start: Date.now() });
+            }
+            return;
+          }
+          if (type === 'tool.response') {
+            const tcId = event?.toolCallId ?? event?.tool_call_id ?? event?.callId;
+            const known = tcId ? toolCalls.get(tcId) : undefined;
+            const name = known?.name ?? event?.name ?? 'tool';
+            const durationMs = known ? Date.now() - known.start : undefined;
+            const resultText = extractToolResponseText(event);
+            this.postMessage({
+              type: 'toolLog',
+              toolCallId: tcId ?? `${Date.now()}-${name}`,
+              name,
+              args: known?.args,
+              badge: makeToolBadge(name, resultText, durationMs),
+              durationMs,
+            });
+            return;
+          }
+          if (type === 'thread.created' && event?.threadId && event.threadId !== 'main') {
+            this.postMessage({
+              type: 'toolLog',
+              toolCallId: event.threadId,
+              name: `subagent: ${event?.name ?? event?.agent ?? 'explorer'}`,
+              badge: 'Running',
+              durationMs: 0,
+            });
+            return;
+          }
+          if (type === 'thread.done' && event?.threadId && event.threadId !== 'main') {
+            this.postMessage({
+              type: 'toolLog',
+              toolCallId: event.threadId,
+              name: `subagent: ${event?.name ?? event?.agent ?? 'explorer'}`,
+              badge: 'Done',
+              durationMs: 0,
+            });
+            return;
+          }
+        },
         onDelta: (text) => {
           this.postMessage({ type: 'tokenDelta', text });
         },
@@ -135,11 +222,13 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
             const proposal = globalEditStaging.stageProposal(
               this.workspaceRoot,
               args.path,
-              args.newContent
+              args.newContent,
+              toolCallId
             );
             this.postMessage({
               type: 'proposalReview',
               proposalId: proposal.proposalId,
+              toolCallId,
               filePath: proposal.relativePath,
               hunks: proposal.hunks,
             });
@@ -166,20 +255,92 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private async _handleProposalDecision(proposalId: string, decision: 'allow' | 'deny') {
+  private async _handleProposalDecision(
+    proposalId: string,
+    decision: 'allow' | 'deny',
+    toolCallId?: string
+  ) {
     const proposal = globalEditStaging.getProposal(proposalId);
-    if (!proposal) return;
+    const resolvedToolCallId = toolCallId ?? proposal?.toolCallId;
 
     if (decision === 'allow') {
-      globalEditStaging.acceptAllHunks(proposalId);
-      globalEditStaging.applyProposal(proposalId);
+      // Apply ONLY the hunks the user accepted (not a blanket accept-all)
+      const result = globalEditStaging.applyProposal(proposalId);
+      this.postMessage({
+        type: 'proposalApplied',
+        proposalId,
+        appliedCount: result.appliedCount,
+        totalCount: result.totalCount,
+        filePath: result.filePath,
+      });
     } else {
       globalEditStaging.discardProposal(proposalId);
+      this.postMessage({ type: 'proposalApplied', proposalId, appliedCount: 0, totalCount: 0, filePath: proposal?.relativePath });
     }
 
-    if (this.currentSessionId) {
-      await this.client.resumeApproval(this.currentSessionId, proposalId, decision);
+    if (this.currentSessionId && resolvedToolCallId) {
+      await this.client.resumeApproval(
+        this.currentSessionId,
+        resolvedToolCallId,
+        decision,
+        decision === 'deny' ? 'Rejected by user in ForgePilot diff review' : undefined
+      );
     }
+  }
+
+  private async _openFile(relativePath: string, line?: number) {
+    try {
+      const fullPath = path.resolve(this.workspaceRoot, relativePath);
+      const uri = vscode.Uri.file(fullPath);
+      const doc = await vscode.workspace.openTextDocument(uri);
+      const editor = await vscode.window.showTextDocument(doc, { preview: true });
+      if (typeof line === 'number' && line > 0) {
+        const pos = new vscode.Position(line - 1, 0);
+        editor.selection = new vscode.Selection(pos, pos);
+        editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+      }
+    } catch (err: any) {
+      this.postMessage({ type: 'error', message: `Could not open ${relativePath}: ${err.message}` });
+    }
+  }
+
+  private async _openDiff(proposalId: string) {
+    const proposal = globalEditStaging.getProposal(proposalId);
+    if (!proposal) {
+      this.postMessage({ type: 'error', message: 'Proposal no longer available (already applied or discarded).' });
+      return;
+    }
+    try {
+      let originalUri: vscode.Uri;
+      if (fs.existsSync(proposal.fullPath)) {
+        originalUri = vscode.Uri.file(proposal.fullPath);
+      } else {
+        // New file: diff against an empty untitled document
+        originalUri = (await vscode.workspace.openTextDocument({ content: '', language: this._guessLanguage(proposal.relativePath) })).uri;
+      }
+      const proposedDoc = await vscode.workspace.openTextDocument({
+        content: proposal.proposedContent,
+        language: this._guessLanguage(proposal.relativePath),
+      });
+      await vscode.commands.executeCommand(
+        'vscode.diff',
+        originalUri,
+        proposedDoc.uri,
+        `${proposal.relativePath} (current ↔ proposed)`
+      );
+    } catch (err: any) {
+      this.postMessage({ type: 'error', message: `Could not open diff: ${err.message}` });
+    }
+  }
+
+  private _guessLanguage(relativePath: string): string {
+    const ext = path.extname(relativePath).slice(1).toLowerCase();
+    const map: Record<string, string> = {
+      py: 'python', ts: 'typescript', tsx: 'typescriptreact', js: 'javascript',
+      jsx: 'javascriptreact', json: 'json', md: 'markdown', rst: 'restructuredtext',
+      css: 'css', html: 'html', yaml: 'yaml', yml: 'yaml', sh: 'shellscript',
+    };
+    return map[ext] ?? ext ?? 'plaintext';
   }
 
   private _getHtmlForWebview(webview: vscode.Webview): string {
