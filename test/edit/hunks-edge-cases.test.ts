@@ -26,9 +26,7 @@ describe('HunkEngine edge cases', () => {
     for (const [oldC, newC] of cases) {
       const hunks = computeHunks(oldC, newC);
       const { newContent, appliedCount } = applyHunks(oldC, hunks, allIds(hunks));
-      // For CRLF input the engine normalises to LF — allow that specific drift.
-      const expected = oldC.includes('\r\n') ? newC.replace(/\r\n/g, '\n') : newC;
-      expect(newContent, `case: ${JSON.stringify(oldC.slice(0, 30))}`).toBe(expected);
+      expect(newContent, `case: ${JSON.stringify(oldC.slice(0, 30))}`).toBe(newC);
       expect(appliedCount).toBe(hunks.length);
     }
   });
