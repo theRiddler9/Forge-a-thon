@@ -18,6 +18,7 @@ export class TrueForgeClient {
       maxRetries: 3,
       retryDelayMs: 1000,
       ...config,
+      baseUrl: config.baseUrl ?? (config as any).serverUrl ?? 'http://localhost:8790',
     };
     this.activeModel = this.config.primaryModel;
     this.sdkClient = new TrueForge({
