@@ -16,6 +16,7 @@ export interface StagedProposal {
   acceptedHunkIds: Set<string>;
   rejectedHunkIds: Set<string>;
   createdAt: number;
+  toolCallId?: string;
 }
 
 export class EditStagingManager {
@@ -29,7 +30,8 @@ export class EditStagingManager {
   stageProposal(
     workspaceRoot: string,
     relativePath: string,
-    proposedContent: string
+    proposedContent: string,
+    toolCallId?: string
   ): StagedProposal {
     const fullPath = path.resolve(workspaceRoot, relativePath);
     let originalContent = '';
@@ -58,6 +60,7 @@ export class EditStagingManager {
       acceptedHunkIds: new Set<string>(),
       rejectedHunkIds: new Set<string>(),
       createdAt: Date.now(),
+      toolCallId,
     };
 
     this.proposals.set(proposalId, proposal);
