@@ -34,6 +34,59 @@ export class TrueForgeClient {
     return this.config.baseUrl;
   }
 
+  getPrimaryModel(): string {
+    return this.config.primaryModel;
+  }
+
+  getFallbackModel(): string | undefined {
+    return this.config.fallbackModel;
+  }
+
+  hasFallback(): boolean {
+    return (
+      !!this.config.fallbackModel && this.config.fallbackModel !== this.config.primaryModel
+    );
+  }
+
+  markFallbackActivated(): void {
+    this.activeModel = this.config.fallbackModel!;
+    this.lastFallbackInfo = {
+      from: this.config.primaryModel,
+      to: this.config.fallbackModel!,
+      attempts: 1,
+      maxRetries: 1,
+    };
+  }
+
+  /**
+   * Runs a single turn and resolves with the final turn status.
+   * Unlike streamTurn, this always resolves (never throws), which lets call
+   * sites implement automatic model fallback on turn-time failures.
+   */
+  async runTurn(
+    sessionId: string,
+    userMessage: string,
+    callbacks: TurnStreamCallbacks = {}
+  ): Promise<{ status: string; message?: string }> {
+    return new Promise((resolve) => {
+      const wrapped: TurnStreamCallbacks = {
+        ...callbacks,
+        onDone: (status, message) => {
+          callbacks.onDone?.(status, message);
+          resolve({ status, message });
+        },
+        onError: (err: Error) => {
+          callbacks.onError?.(err);
+          resolve({ status: 'error', message: err?.message ?? String(err) });
+        },
+      };
+      this.streamTurn(sessionId, userMessage, wrapped).catch((err: any) => {
+        callbacks.onError?.(err);
+        resolve({ status: 'error', message: err?.message ?? String(err) });
+      });
+    });
+  }
+
   async listAvailableModels(): Promise<string[]> {
     try {
       const res = await this.sdkClient.models.list();
@@ -189,8 +242,9 @@ export class TrueForgeClient {
         // Check for turn completion
         if ((event as any).type === 'turn.done') {
           const status = (event as any).state?.status ?? 'done';
+          const message = (event as any).state?.message as string | undefined;
           if (callbacks.onDone) {
-            callbacks.onDone(status);
+            callbacks.onDone(status, message);
           }
         }
       }

@@ -12,5 +12,5 @@ export interface TurnStreamCallbacks {
   onDelta?: (text: string, eventId: string) => void;
   onToolApprovalRequired?: (toolCallId: string, toolName: string, args: any) => void;
   onError?: (err: Error) => void;
-  onDone?: (status: string) => void;
+  onDone?: (status: string, message?: string) => void;
 }
