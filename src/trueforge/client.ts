@@ -1,5 +1,10 @@
 import { TrueForge, isEventDelta, mergeEventDelta } from '@truefoundry/trueforge-sdk';
-import { TrueForgeClientConfig, TurnStreamCallbacks } from './types.js';
+import { TrueForgeClientConfig, TrueForgeModelInfo, TurnMetrics, TurnStreamCallbacks } from './types.js';
+
+function num(v: any): number | undefined {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
 
 export class TrueForgeClient {
   private config: TrueForgeClientConfig;
@@ -67,13 +72,13 @@ export class TrueForgeClient {
     sessionId: string,
     userMessage: string,
     callbacks: TurnStreamCallbacks = {}
-  ): Promise<{ status: string; message?: string }> {
+  ): Promise<{ status: string; message?: string; metrics?: TurnMetrics }> {
     return new Promise((resolve) => {
       const wrapped: TurnStreamCallbacks = {
         ...callbacks,
-        onDone: (status, message) => {
-          callbacks.onDone?.(status, message);
-          resolve({ status, message });
+        onDone: (status, message, metrics) => {
+          callbacks.onDone?.(status, message, metrics);
+          resolve({ status, message, metrics });
         },
         onError: (err: Error) => {
           callbacks.onError?.(err);
@@ -87,18 +92,31 @@ export class TrueForgeClient {
     });
   }
 
-  async listAvailableModels(): Promise<string[]> {
+  async listModelsDetailed(): Promise<TrueForgeModelInfo[]> {
     try {
       const res = await this.sdkClient.models.list();
-      const list = (res.data?.map((m: any) => m.name || m.id) || []).filter(Boolean);
-      if (list.length > 0 && (!this.activeModel || !list.includes(this.activeModel))) {
-        this.activeModel = list[0];
+      const list = (res.data?.map((m: any) => {
+        const props = m.properties ?? {};
+        const contextLength = num(props.context_length ?? props.contextLength);
+        const maxOutputTokens = num(props.max_output_tokens ?? props.maxOutputTokens);
+        return {
+          name: m.name || m.id,
+          ...(contextLength !== undefined ? { contextLength } : {}),
+          ...(maxOutputTokens !== undefined ? { maxOutputTokens } : {}),
+        };
+      }) || []).filter((m) => m.name);
+      if (list.length > 0 && (!this.activeModel || !list.some((m) => m.name === this.activeModel))) {
+        this.activeModel = list[0].name;
       }
       return list;
     } catch (err: any) {
       console.warn(`Could not fetch models from TrueForge: ${err.message}`);
       return [];
     }
+  }
+
+  async listAvailableModels(): Promise<string[]> {
+    return (await this.listModelsDetailed()).map((m) => m.name);
   }
 
   async registerMcpServer(name: string, url: string): Promise<boolean> {
@@ -251,8 +269,16 @@ export class TrueForgeClient {
         if ((event as any).type === 'turn.done') {
           const status = (event as any).state?.status ?? 'done';
           const message = (event as any).state?.message as string | undefined;
+          const rawMetrics = (event as any).state?.metrics;
+          const metrics: TurnMetrics | undefined = rawMetrics
+            ? {
+                inputTokens: num(rawMetrics.totalInputTokens),
+                outputTokens: num(rawMetrics.totalOutputTokens),
+                totalTokens: num(rawMetrics.totalTokens),
+              }
+            : undefined;
           if (callbacks.onDone) {
-            callbacks.onDone(status, message);
+            callbacks.onDone(status, message, metrics);
           }
         }
       }
