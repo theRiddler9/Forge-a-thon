@@ -140,6 +140,9 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
 
   private async _handleUserMessage(userInput: string) {
     try {
+      const INSTRUCTIONS =
+        'You are ForgePilot, an expert coding assistant. Before proposing file edits, summarize the chosen context and explain why each file was selected. Always use propose_write for file edits.';
+
       // 1. Resolve mentions
       const parsed = parseMentions(userInput);
       const resolvedContext = await resolveMentions(this.workspaceRoot, parsed);
@@ -158,9 +161,7 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
 
       // 2. Ensure session exists
       if (!this.currentSessionId) {
-        const session = await this.client.createSessionWithFallback(
-          'You are ForgePilot, an expert coding assistant. Before proposing file edits, summarize the chosen context and explain why each file was selected. Always use propose_write for file edits.'
-        );
+        const session = await this.client.createSessionWithFallback(INSTRUCTIONS);
         this.currentSessionId = session.id;
         this.postMessage({
           type: 'status',
@@ -183,91 +184,124 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
         });
       }
 
-      // 3. Stream turn
-      const toolCalls = new Map<string, { name: string; args: any; start: number }>();
-      await this.client.streamTurn(this.currentSessionId!, fullPrompt, {
-        onEvent: (event: any) => {
-          const type = event?.type;
-          if (type === 'model.message' && Array.isArray(event?.toolCalls)) {
-            for (const tc of event.toolCalls) {
-              toolCalls.set(tc.id, { name: tc?.name ?? 'tool', args: tc?.arguments ?? {}, start: Date.now() });
+      // 3. Stream the turn with automatic model fallback on turn-time failure.
+      // (Handlers are rebuilt per attempt; no proposal is staged before the
+      // fallback decision, so a failed turn leaves the workspace untouched.)
+      const makeHandlers = () => {
+        const toolCalls = new Map<string, { name: string; args: any; start: number }>();
+        return {
+          onEvent: (event: any) => {
+            const type = event?.type;
+            if (type === 'model.message' && Array.isArray(event?.toolCalls)) {
+              for (const tc of event.toolCalls) {
+                toolCalls.set(tc.id, { name: tc?.name ?? 'tool', args: tc?.arguments ?? {}, start: Date.now() });
+              }
+              return;
             }
-            return;
-          }
-          if (type === 'tool.response') {
-            const tcId = event?.toolCallId ?? event?.tool_call_id ?? event?.callId;
-            const known = tcId ? toolCalls.get(tcId) : undefined;
-            const name = known?.name ?? event?.name ?? 'tool';
-            const durationMs = known ? Date.now() - known.start : undefined;
-            const resultText = extractToolResponseText(event);
+            if (type === 'tool.response') {
+              const tcId = event?.toolCallId ?? event?.tool_call_id ?? event?.callId;
+              const known = tcId ? toolCalls.get(tcId) : undefined;
+              const name = known?.name ?? event?.name ?? 'tool';
+              const durationMs = known ? Date.now() - known.start : undefined;
+              const resultText = extractToolResponseText(event);
+              this.postMessage({
+                type: 'toolLog',
+                toolCallId: tcId ?? `${Date.now()}-${name}`,
+                name,
+                args: known?.args,
+                badge: makeToolBadge(name, resultText, durationMs),
+                durationMs,
+              });
+              this._refreshBudget();
+              return;
+            }
+            if (type === 'thread.created' && event?.threadId && event.threadId !== 'main') {
+              this.postMessage({
+                type: 'toolLog',
+                toolCallId: event.threadId,
+                name: `subagent: ${event?.name ?? event?.agent ?? 'explorer'}`,
+                badge: 'Running',
+                durationMs: 0,
+              });
+              return;
+            }
+            if (type === 'thread.done' && event?.threadId && event.threadId !== 'main') {
+              this.postMessage({
+                type: 'toolLog',
+                toolCallId: event.threadId,
+                name: `subagent: ${event?.name ?? event?.agent ?? 'explorer'}`,
+                badge: 'Done',
+                durationMs: 0,
+              });
+              return;
+            }
+          },
+          onDelta: (text: string) => {
+            this.postMessage({ type: 'tokenDelta', text });
+          },
+          onToolApprovalRequired: (toolCallId: string, toolName: string, args: any) => {
             this.postMessage({
-              type: 'toolLog',
-              toolCallId: tcId ?? `${Date.now()}-${name}`,
-              name,
-              args: known?.args,
-              badge: makeToolBadge(name, resultText, durationMs),
-              durationMs,
+              type: 'toolCall',
+              id: toolCallId,
+              name: toolName,
+              args,
+              isDestructive: true,
             });
-            this._refreshBudget();
-            return;
-          }
-          if (type === 'thread.created' && event?.threadId && event.threadId !== 'main') {
-            this.postMessage({
-              type: 'toolLog',
-              toolCallId: event.threadId,
-              name: `subagent: ${event?.name ?? event?.agent ?? 'explorer'}`,
-              badge: 'Running',
-              durationMs: 0,
-            });
-            return;
-          }
-          if (type === 'thread.done' && event?.threadId && event.threadId !== 'main') {
-            this.postMessage({
-              type: 'toolLog',
-              toolCallId: event.threadId,
-              name: `subagent: ${event?.name ?? event?.agent ?? 'explorer'}`,
-              badge: 'Done',
-              durationMs: 0,
-            });
-            return;
-          }
-        },
-        onDelta: (text) => {
-          this.postMessage({ type: 'tokenDelta', text });
-        },
-        onToolApprovalRequired: (toolCallId, toolName, args) => {
-          this.postMessage({
-            type: 'toolCall',
-            id: toolCallId,
-            name: toolName,
-            args,
-            isDestructive: true,
-          });
 
-          if (toolName === 'propose_write') {
-            const proposal = globalEditStaging.stageProposal(
-              this.workspaceRoot,
-              args.path,
-              args.newContent,
-              toolCallId
-            );
-            this.postMessage({
-              type: 'proposalReview',
-              proposalId: proposal.proposalId,
-              toolCallId,
-              filePath: proposal.relativePath,
-              hunks: proposal.hunks,
-            });
-          }
-        },
-        onDone: (status) => {
-          this._refreshBudget();
-          this.postMessage({ type: 'turnDone', status });
-        },
-        onError: (err) => {
-          this.postMessage({ type: 'error', message: err.message });
-        },
-      });
+            if (toolName === 'propose_write') {
+              const proposal = globalEditStaging.stageProposal(
+                this.workspaceRoot,
+                args.path,
+                args.newContent,
+                toolCallId
+              );
+              this.postMessage({
+                type: 'proposalReview',
+                proposalId: proposal.proposalId,
+                toolCallId,
+                filePath: proposal.relativePath,
+                hunks: proposal.hunks,
+              });
+            }
+          },
+          onError: (err: Error) => {
+            this.postMessage({ type: 'error', message: err.message });
+          },
+        };
+      };
+
+      let outcome = await this.client.runTurn(this.currentSessionId!, fullPrompt, makeHandlers());
+
+      // Automatic fallback: the configured primary model failed mid-turn.
+      // Replay the identical prompt once on the fallback model.
+      if (outcome.status === 'error' && this.client.hasFallback()) {
+        const from = this.client.getActiveModel();
+        const to = this.client.getFallbackModel()!;
+        this.postMessage({ type: 'fallbackActivated', from, to, attempts: 1, maxRetries: 1 });
+        try {
+          const fbSession = await this.client.createSession(to, INSTRUCTIONS);
+          this.client.markFallbackActivated();
+          this.currentSessionId = fbSession.id;
+          this.postMessage({ type: 'status', model: to, fallback: true });
+          this.postMessage({
+            type: 'session',
+            label: `Session #${String(fbSession.id).replace(/[^a-zA-Z0-9]/g, '').slice(-4)}`,
+          });
+          outcome = await this.client.runTurn(fbSession.id, fullPrompt, makeHandlers());
+        } catch (err: any) {
+          outcome = { status: 'error', message: err?.message ?? String(err) };
+        }
+      }
+
+      this._refreshBudget();
+      if (outcome.status === 'error') {
+        this.postMessage({
+          type: 'error',
+          message: `${outcome.message ?? 'The model request failed.'}\nWorkspace unchanged (0 files modified).`,
+        });
+      } else {
+        this.postMessage({ type: 'turnDone', status: outcome.status });
+      }
     } catch (err: any) {
       this.postMessage({ type: 'error', message: err.message });
     }
