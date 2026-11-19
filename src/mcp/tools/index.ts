@@ -5,8 +5,10 @@ import { executeReadFile } from './readFile.js';
 import { executeSearchText } from './searchText.js';
 import { executeFindSymbol } from './findSymbol.js';
 import { globalContextBudget } from './contextBudget.js';
+import { executeProposeWrite } from './proposeWrite.js';
+import { executeRunCommand } from './runCommand.js';
 
-export function registerReadAndContextTools(server: McpServer, workspaceRoot: string): void {
+export function registerAllMcpTools(server: McpServer, workspaceRoot: string): void {
   // list_dir
   server.tool(
     'list_dir',
@@ -69,4 +71,31 @@ export function registerReadAndContextTools(server: McpServer, workspaceRoot: st
       };
     }
   );
+
+  // propose_write (Approval-gated, destructive hint)
+  server.tool(
+    'propose_write',
+    'Propose an edit to a file. Edits are staged in memory and presented to the user for per-hunk review before touching disk.',
+    {
+      path: z.string().describe('Relative path of the file to modify or create'),
+      newContent: z.string().describe('Full proposed new content for the file'),
+      proposalId: z.string().optional().describe('Internal proposal ID when executing approved changes'),
+    },
+    { destructiveHint: true },
+    async (args) => executeProposeWrite(workspaceRoot, args)
+  );
+
+  // run_command (Approval-gated, destructive hint)
+  server.tool(
+    'run_command',
+    'Execute a terminal command in the workspace directory. Requires user approval.',
+    {
+      command: z.string().describe('Exact command line string to execute'),
+      timeoutMs: z.number().optional().describe('Timeout in milliseconds (default: 30000)'),
+    },
+    { destructiveHint: true },
+    async (args) => executeRunCommand(workspaceRoot, args)
+  );
 }
+
+export const registerReadAndContextTools = registerAllMcpTools;
