@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+out/
+build/
+
+# TrueForge SQLite & runtime data
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.db-shm
+*.db-wal
+.trueforge/
+
+# Environment and secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Logs & temp
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+tmp/
+temp/
+
+# Test & coverage
+coverage/
+.vscode-test/
+
+# OS / Editor metadata
+.DS_Store
+Thumbs.db
+*.swp
+*.bak
