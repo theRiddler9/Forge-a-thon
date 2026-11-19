@@ -32,6 +32,17 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.onDidReceiveMessage(async (data) => {
       switch (data.type) {
+        case 'getModels':
+          await this._refreshModels();
+          break;
+        case 'selectModel':
+          this.client.setActiveModel(data.model);
+          this.currentSessionId = undefined; // Reset session to use newly chosen model
+          this.postMessage({
+            type: 'status',
+            model: data.model,
+          });
+          break;
         case 'sendMessage':
           await this._handleUserMessage(data.text);
           break;
@@ -47,6 +58,16 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
       }
     });
 
+    this._refreshModels();
+  }
+
+  private async _refreshModels() {
+    const models = await this.client.listAvailableModels();
+    this.postMessage({
+      type: 'modelsList',
+      models,
+      activeModel: this.client.getActiveModel(),
+    });
     this.postMessage({
       type: 'status',
       model: this.client.getActiveModel(),

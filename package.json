@@ -71,12 +71,12 @@
         },
         "forgepilot.primaryModel": {
           "type": "string",
-          "default": "anthropic/claude-sonnet-4-6",
+          "default": "nvidia/nemotron-3-ultra-550b-a55b",
           "description": "Primary model name configured in TrueForge"
         },
         "forgepilot.fallbackModel": {
           "type": "string",
-          "default": "openai/gpt-4o",
+          "default": "google-gemini/gemini-3-8-flash",
           "description": "Fallback model name configured in TrueForge"
         },
         "forgepilot.tokenBudget": {
