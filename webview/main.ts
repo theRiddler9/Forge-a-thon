@@ -8,23 +8,36 @@ const vscode = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : { p
 
 // DOM Elements
 const chatLog = document.getElementById('chat-log') as HTMLElement;
+const welcomeState = document.getElementById('welcome-state') as HTMLElement;
 const promptInput = document.getElementById('prompt-input') as HTMLTextAreaElement;
 const sendBtn = document.getElementById('send-btn') as HTMLButtonElement;
 const cancelBtn = document.getElementById('cancel-btn') as HTMLButtonElement;
 const modelSelect = document.getElementById('model-select') as HTMLSelectElement;
 const refreshModelsBtn = document.getElementById('refresh-models-btn') as HTMLButtonElement;
+const resetSessionBtn = document.getElementById('reset-session-btn') as HTMLButtonElement;
 const statusDot = document.getElementById('status-dot') as HTMLElement;
 const budgetValue = document.getElementById('budget-value') as HTMLElement;
 const budgetFill = document.getElementById('budget-progress-fill') as HTMLElement;
-const clearChatBtn = document.getElementById('clear-chat-btn') as HTMLButtonElement;
+const sessionLabel = document.getElementById('session-label') as HTMLElement;
 const chipFile = document.getElementById('chip-file') as HTMLElement;
 const chipSymbol = document.getElementById('chip-symbol') as HTMLElement;
+const attachChips = document.getElementById('attach-chips') as HTMLElement;
 
 let currentStreamingMessage: HTMLElement | null = null;
 let currentStreamingBody: HTMLElement | null = null;
 
 // Initial model sync
 vscode.postMessage({ type: 'getModels' });
+
+function showWelcome() {
+  welcomeState.style.display = 'flex';
+  chatLog.style.display = 'none';
+}
+
+function showChat() {
+  welcomeState.style.display = 'none';
+  chatLog.style.display = 'flex';
+}
 
 function appendMessage(sender: 'user' | 'agent', text: string): HTMLElement {
   const msg = document.createElement('div');
@@ -184,8 +197,10 @@ function handleSend() {
   const text = promptInput.value.trim();
   if (!text) return;
 
+  showChat();
   appendMessage('user', text);
   promptInput.value = '';
+  renderAttachChips();
   cancelBtn.style.display = 'inline-flex';
   sendBtn.disabled = true;
 
@@ -216,19 +231,60 @@ refreshModelsBtn.addEventListener('click', () => {
   vscode.postMessage({ type: 'getModels' });
 });
 
-clearChatBtn.addEventListener('click', () => {
+resetSessionBtn.addEventListener('click', () => {
   chatLog.innerHTML = '';
+  showWelcome();
+  vscode.postMessage({ type: 'resetSession' });
 });
 
 chipFile.addEventListener('click', () => {
   promptInput.value += '@file:';
   promptInput.focus();
+  renderAttachChips();
 });
 
 chipSymbol.addEventListener('click', () => {
   promptInput.value += '@symbol:';
   promptInput.focus();
+  renderAttachChips();
 });
+
+// Suggestion chips on the welcome screen prefill + send
+for (const btn of Array.from(document.querySelectorAll<HTMLButtonElement>('.suggestion'))) {
+  btn.addEventListener('click', () => {
+    const prompt = btn.dataset.prompt;
+    if (!prompt) return;
+    promptInput.value = prompt;
+    handleSend();
+  });
+}
+
+// Render removable mention chips (@file:..., @symbol:...) above the composer
+const MENTION_RE = /(?:^|\s)(@(?:file|symbol):[^\s]+)/g;
+
+function renderAttachChips() {
+  if (!attachChips) return;
+  const tokens = (promptInput.value.match(MENTION_RE) || []).map((t) => t.trim());
+  attachChips.innerHTML = '';
+  for (const token of tokens) {
+    const chip = document.createElement('span');
+    chip.className = 'attach-chip';
+    const label = document.createElement('span');
+    label.textContent = token;
+    const remove = document.createElement('button');
+    remove.textContent = '×';
+    remove.title = 'Remove mention';
+    remove.addEventListener('click', () => {
+      promptInput.value = promptInput.value.replace(token, '').replace(/\s{2,}/g, ' ').trim();
+      renderAttachChips();
+    });
+    chip.appendChild(label);
+    chip.appendChild(remove);
+    attachChips.appendChild(chip);
+  }
+}
+
+promptInput.addEventListener('input', renderAttachChips);
 
 sendBtn.addEventListener('click', handleSend);
 cancelBtn.addEventListener('click', handleCancel);
@@ -267,6 +323,12 @@ window.addEventListener('message', (event) => {
             break;
           }
         }
+      }
+      break;
+
+    case 'session':
+      if (sessionLabel) {
+        sessionLabel.textContent = msg.label || 'Fresh Session';
       }
       break;
 
