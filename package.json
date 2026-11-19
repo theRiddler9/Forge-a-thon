@@ -71,7 +71,7 @@
         },
         "forgepilot.primaryModel": {
           "type": "string",
-          "default": "nvidia/nemotron-3-ultra-550b-a55b",
+          "default": "nvidia/nemotron-3-super-120b-a12b",
           "description": "Primary model name configured in TrueForge"
         },
         "forgepilot.fallbackModel": {

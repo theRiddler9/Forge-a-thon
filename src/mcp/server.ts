@@ -6,6 +6,12 @@ import { registerReadAndContextTools } from './tools/index.js';
 
 export type { McpServerInstance, McpServerOptions };
 
+export function createConfiguredMcpServer(name: string, version: string, workspaceRoot: string): McpServer {
+  const mcpServer = new McpServer({ name, version });
+  registerReadAndContextTools(mcpServer, workspaceRoot);
+  return mcpServer;
+}
+
 export async function startMcpServer(options: McpServerOptions = {}): Promise<McpServerInstance> {
   const host = options.host ?? '127.0.0.1';
   const port = options.port ?? 0;
@@ -13,11 +19,9 @@ export async function startMcpServer(options: McpServerOptions = {}): Promise<Mc
   const version = options.version ?? '0.1.0';
   const workspaceRoot = options.workspaceRoot ?? process.cwd();
 
-  const mcpServer = new McpServer({ name, version });
+  const baselineServer = createConfiguredMcpServer(name, version, workspaceRoot);
   const activeTransports = new Map<string, SSEServerTransport>();
-
-  // Register read and context tools
-  registerReadAndContextTools(mcpServer, workspaceRoot);
+  const activeServers = new Map<string, McpServer>();
 
   const httpServer = http.createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -38,11 +42,17 @@ export async function startMcpServer(options: McpServerOptions = {}): Promise<Mc
       const sessionId = transport.sessionId;
       activeTransports.set(sessionId, transport);
 
+      const connMcpServer = createConfiguredMcpServer(name, version, workspaceRoot);
+      activeServers.set(sessionId, connMcpServer);
+
       transport.onclose = () => {
         activeTransports.delete(sessionId);
+        const s = activeServers.get(sessionId);
+        activeServers.delete(sessionId);
+        s?.close().catch(() => {});
       };
 
-      await mcpServer.connect(transport);
+      await connMcpServer.connect(transport);
       return;
     }
 
@@ -75,7 +85,7 @@ export async function startMcpServer(options: McpServerOptions = {}): Promise<Mc
     port: actualPort,
     host,
     url: actualUrl,
-    mcpServer,
+    mcpServer: baselineServer,
     close: async () => {
       for (const transport of activeTransports.values()) {
         try {
@@ -83,6 +93,12 @@ export async function startMcpServer(options: McpServerOptions = {}): Promise<Mc
         } catch {}
       }
       activeTransports.clear();
+      for (const s of activeServers.values()) {
+        try {
+          await s.close();
+        } catch {}
+      }
+      activeServers.clear();
       await new Promise<void>((resolve) => httpServer.close(() => resolve()));
     },
   };

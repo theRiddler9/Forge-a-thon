@@ -38,12 +38,13 @@ export function registerInlineEditCommand(
       },
       async (_progress, token) => {
         try {
+          const fullDocText = editor.document.getText();
           const inlinePrompt = [
             `File: ${filePath}`,
             `Lines: ${startLine}-${endLine}`,
-            `Selected Code:\n${selectedText}`,
+            `Selected Code:\n\`\`\`\n${selectedText}\n\`\`\``,
             `Instruction: ${instruction}`,
-            `CRITICAL INSTRUCTION: Edit only the selected code or function. Call propose_write once with the complete modified file content.`,
+            `CRITICAL: Edit only the selected code or function according to the instruction. Call propose_write once with the modified code or full file.`,
           ].join('\n\n');
 
           const session = await client.createSessionWithFallback(
@@ -59,13 +60,42 @@ export function registerInlineEditCommand(
           await client.streamTurn(session.id, inlinePrompt, {
             onToolApprovalRequired: async (toolCallId, toolName, args) => {
               if (toolName === 'propose_write') {
+                let fullNewContent = args.newContent ?? '';
+                // If the model returned only the modified function or snippet, splice it into the full document
+                if (
+                  fullDocText.includes(selectedText) &&
+                  !fullNewContent.includes(fullDocText.slice(0, 50)) &&
+                  fullNewContent.length < fullDocText.length * 0.8
+                ) {
+                  const prefix = fullDocText.substring(0, editor.document.offsetAt(selection.start));
+                  const suffix = fullDocText.substring(editor.document.offsetAt(selection.end));
+                  fullNewContent = prefix + fullNewContent + suffix;
+                }
+
                 const proposal = globalEditStaging.stageProposal(
                   workspaceRoot,
-                  args.path,
-                  args.newContent
+                  args.path || filePath,
+                  fullNewContent,
+                  toolCallId
                 );
 
                 globalHunkCodeLensProvider.refresh();
+
+                // Open side-by-side diff preview for immediate visual feedback
+                try {
+                  const proposedDoc = await vscode.workspace.openTextDocument({
+                    content: proposal.proposedContent,
+                    language: editor.document.languageId,
+                  });
+                  await vscode.commands.executeCommand(
+                    'vscode.diff',
+                    editor.document.uri,
+                    proposedDoc.uri,
+                    `${filePath} (Current ↔ Proposed Inline Edit)`
+                  );
+                } catch (diffErr: any) {
+                  console.warn('Could not open diff view:', diffErr);
+                }
 
                 // Show action buttons to user
                 const choice = await vscode.window.showInformationMessage(
@@ -79,7 +109,7 @@ export function registerInlineEditCommand(
                   globalEditStaging.applyProposal(proposal.proposalId);
                   await client.resumeApproval(session.id, toolCallId, 'allow');
                   vscode.window.showInformationMessage(`Applied all hunks to ${filePath}.`);
-                } else {
+                } else if (choice === 'Reject All') {
                   globalEditStaging.discardProposal(proposal.proposalId);
                   await client.resumeApproval(session.id, toolCallId, 'deny', 'User rejected proposal');
                 }
