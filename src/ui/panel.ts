@@ -239,6 +239,9 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
           onDelta: (text: string) => {
             this.postMessage({ type: 'tokenDelta', text });
           },
+          onReasoningDelta: (text: string) => {
+            this.postMessage({ type: 'reasoningDelta', text });
+          },
           onToolApprovalRequired: (toolCallId: string, toolName: string, args: any) => {
             this.postMessage({
               type: 'toolCall',
