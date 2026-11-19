@@ -2,26 +2,20 @@ import http from 'http';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { McpServerOptions, McpServerInstance } from './types.js';
+import { registerReadAndContextTools } from './tools/index.js';
 
 export async function startMcpServer(options: McpServerOptions = {}): Promise<McpServerInstance> {
   const host = options.host ?? '127.0.0.1';
   const port = options.port ?? 0;
   const name = options.name ?? 'forgepilot';
   const version = options.version ?? '0.1.0';
+  const workspaceRoot = options.workspaceRoot ?? process.cwd();
 
   const mcpServer = new McpServer({ name, version });
   const activeTransports = new Map<string, SSEServerTransport>();
 
-  // Register a baseline health check tool so capabilities include 'tools'
-  mcpServer.tool(
-    'ping',
-    'Health check ping tool',
-    {},
-    { readOnlyHint: true },
-    async () => ({
-      content: [{ type: 'text', text: 'pong' }],
-    })
-  );
+  // Register read and context tools
+  registerReadAndContextTools(mcpServer, workspaceRoot);
 
   const httpServer = http.createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
