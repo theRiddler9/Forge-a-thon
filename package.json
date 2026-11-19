@@ -71,12 +71,12 @@
         },
         "forgepilot.primaryModel": {
           "type": "string",
-          "default": "nvidia/nemotron-3-super-120b-a12b",
+          "default": "nvidia/nvidia-nemotron-3-super-120b-a-12b",
           "description": "Primary model name configured in TrueForge"
         },
         "forgepilot.fallbackModel": {
           "type": "string",
-          "default": "google-gemini/gemini-3-8-flash",
+          "default": "groq/llama-3-3-70b-versatile",
           "description": "Fallback model name configured in TrueForge"
         },
         "forgepilot.tokenBudget": {

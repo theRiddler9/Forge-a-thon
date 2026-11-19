@@ -1,6 +1,6 @@
 {
   "forgepilot.serverUrl": "http://localhost:8790",
-  "forgepilot.primaryModel": "nvidia/nemotron-3-super-120b-a12b",
-  "forgepilot.fallbackModel": "google-gemini/gemini-3-8-flash",
+  "forgepilot.primaryModel": "nvidia/nvidia-nemotron-3-super-120b-a-12b",
+  "forgepilot.fallbackModel": "groq/llama-3-3-70b-versatile",
   "forgepilot.tokenBudget": 30000
 }

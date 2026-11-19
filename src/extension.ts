@@ -16,8 +16,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const config = vscode.workspace.getConfiguration('forgepilot');
   const serverUrl = config.get<string>('serverUrl', 'http://localhost:8790');
-  const primaryModel = config.get<string>('primaryModel', 'nvidia/nemotron-3-super-120b-a12b');
-  const fallbackModel = config.get<string>('fallbackModel', 'google-gemini/gemini-3-8-flash');
+  const primaryModel = config.get<string>('primaryModel', 'nvidia/nvidia-nemotron-3-super-120b-a-12b');
+  const fallbackModel = config.get<string>('fallbackModel', 'groq/llama-3-3-70b-versatile');
   const tokenBudget = config.get<number>('tokenBudget', 30000);
 
   globalContextBudget.setBudget(tokenBudget);

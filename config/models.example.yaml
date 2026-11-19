@@ -1,9 +1,22 @@
-# Example configuration for TrueForge models
-# Place custom endpoint or provider details here or configure inside TrueForge UI: Settings -> Models
+# Example model configuration for ForgePilot (TrueForge Settings -> Models).
+# Declare your actual provider keys inside TrueForge, never in this repo.
+# The names must match what TrueForge reports at GET /api/v1/models.
+
 primary:
-  name: "anthropic/claude-sonnet-4-6"
-  provider: "anthropic"
+  # Model the extension starts on (configured as a provider or
+  # OpenAI-compatible endpoint inside TrueForge)
+  name: "nvidia/nvidia-nemotron-3-super-120b-a-12b"
+  provider: "nvidia"
 
 fallback:
-  name: "openai/gpt-4o"
-  provider: "openai"
+  # Used automatically (no user action) when the primary model fails:
+  # 3 retries with backoff at session creation, and an immediate
+  # single replay on the fallback model for turn-time failures.
+  name: "groq/llama-3-3-70b-versatile"
+  provider: "groq"
+
+# Local/offline option (no API key): run Ollama and register it in
+# TrueForge as an OpenAI-compatible endpoint http://localhost:11434/v1
+#   ollama pull qwen2.5-coder:3b
+# Then set primary/fallback to e.g. "ollama/qwen2.5-coder:3b".
+# Declare every model you used in the write-up.
