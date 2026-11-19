@@ -1,0 +1,9 @@
+# Example configuration for TrueForge models
+# Place custom endpoint or provider details here or configure inside TrueForge UI: Settings -> Models
+primary:
+  name: "anthropic/claude-sonnet-4-6"
+  provider: "anthropic"
+
+fallback:
+  name: "openai/gpt-4o"
+  provider: "openai"

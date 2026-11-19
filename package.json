@@ -1,0 +1,112 @@
+{
+  "name": "forge-a-thon",
+  "displayName": "ForgePilot",
+  "description": "VS Code coding agent client powered by TrueForge local mode",
+  "version": "0.1.0",
+  "publisher": "forgepilot",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.93.0"
+  },
+  "categories": [
+    "AI",
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "forgepilot-sidebar",
+          "title": "ForgePilot",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "forgepilot-sidebar": [
+        {
+          "type": "webview",
+          "id": "forgepilot.agentView",
+          "name": "ForgePilot Agent"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "forgepilot.inlineEdit",
+        "title": "ForgePilot: Inline Edit"
+      },
+      {
+        "command": "forgepilot.undoLastChange",
+        "title": "ForgePilot: Undo Last Applied Change"
+      },
+      {
+        "command": "forgepilot.acceptHunk",
+        "title": "ForgePilot: Accept Hunk"
+      },
+      {
+        "command": "forgepilot.rejectHunk",
+        "title": "ForgePilot: Reject Hunk"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "forgepilot.inlineEdit",
+        "key": "ctrl+k ctrl+i",
+        "mac": "cmd+k cmd+i",
+        "when": "editorTextFocus"
+      }
+    ],
+    "configuration": {
+      "title": "ForgePilot",
+      "properties": {
+        "forgepilot.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:8790",
+          "description": "TrueForge server URL"
+        },
+        "forgepilot.primaryModel": {
+          "type": "string",
+          "default": "anthropic/claude-sonnet-4-6",
+          "description": "Primary model name configured in TrueForge"
+        },
+        "forgepilot.fallbackModel": {
+          "type": "string",
+          "default": "openai/gpt-4o",
+          "description": "Fallback model name configured in TrueForge"
+        },
+        "forgepilot.tokenBudget": {
+          "type": "number",
+          "default": 30000,
+          "description": "Max token budget for retrieved context per turn"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "node esbuild.js --production",
+    "watch": "node esbuild.js --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "compile": "tsc -p ./ --noEmit"
+  },
+  "devDependencies": {
+    "@types/diff": "^5.2.3",
+    "@types/node": "^22.10.2",
+    "@types/vscode": "^1.93.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@truefoundry/trueforge-sdk": "^0.185.0",
+    "diff": "^7.0.0",
+    "zod": "^3.24.1"
+  }
+}
