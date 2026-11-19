@@ -316,7 +316,19 @@ CRITICAL EDITING & SAFETY RULES:
 
       let outcome = await this.client.runTurn(this.currentSessionId!, fullPrompt, makeHandlers());
 
-      // Automatic fallback: the configured primary model failed mid-turn.
+      // 3a. Handle rate limits (429) with automatic backoff retry
+      if (outcome.status === 'error' && outcome.message && /429|rate\s*limit/i.test(outcome.message)) {
+        const match = outcome.message.match(/try again in ([\d\.]+)s/i);
+        const waitSec = match ? Math.min(Math.ceil(parseFloat(match[1])) + 2, 35) : 15;
+        this.postMessage({
+          type: 'tokenDelta',
+          text: `\n\n⏳ *Rate limit encountered. Auto-retrying with backoff in ${waitSec}s...*\n`,
+        });
+        await new Promise((resolve) => setTimeout(resolve, waitSec * 1000));
+        outcome = await this.client.runTurn(this.currentSessionId!, fullPrompt, makeHandlers());
+      }
+
+      // 3b. Automatic fallback: the configured primary model failed mid-turn.
       // Replay the identical prompt once on the fallback model.
       if (outcome.status === 'error' && this.client.hasFallback()) {
         const from = this.client.getActiveModel();
