@@ -4,6 +4,8 @@ import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { McpServerOptions, McpServerInstance } from './types.js';
 import { registerReadAndContextTools } from './tools/index.js';
 
+export type { McpServerInstance, McpServerOptions };
+
 export async function startMcpServer(options: McpServerOptions = {}): Promise<McpServerInstance> {
   const host = options.host ?? '127.0.0.1';
   const port = options.port ?? 0;

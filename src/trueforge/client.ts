@@ -150,7 +150,7 @@ export class TrueForgeClient {
         }
 
         if (callbacks.onEvent) {
-          callbacks.onEvent(event, id);
+          callbacks.onEvent(event, id ?? 0);
         }
 
         // Check for tool approval requirement

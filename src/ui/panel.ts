@@ -86,7 +86,7 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
       }
 
       // 3. Stream turn
-      await this.client.streamTurn(this.currentSessionId, fullPrompt, {
+      await this.client.streamTurn(this.currentSessionId!, fullPrompt, {
         onDelta: (text) => {
           this.postMessage({ type: 'tokenDelta', text });
         },
