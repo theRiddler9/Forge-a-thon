@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { TrueForgeClient } from '../trueforge/client.js';
 import { globalEditStaging } from '../edit/staging.js';
+import { globalSnapshotManager } from '../edit/snapshot.js';
 import { parseMentions, resolveMentions, formatContextBlock } from '../context/mentions.js';
 import { globalContextBudget } from '../mcp/tools/contextBudget.js';
 
@@ -357,15 +358,42 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
     const resolvedToolCallId = toolCallId ?? proposal?.toolCallId;
 
     if (decision === 'allow') {
-      // Apply ONLY the hunks the user accepted (not a blanket accept-all)
-      const result = globalEditStaging.applyProposal(proposalId);
-      this.postMessage({
-        type: 'proposalApplied',
-        proposalId,
-        appliedCount: result.appliedCount,
-        totalCount: result.totalCount,
-        filePath: result.filePath,
-      });
+      // Apply ONLY the hunks the user accepted (not a blanket accept-all).
+      // Writes go through the editor (WorkspaceEdit + save) so Ctrl+Z works
+      // natively; nothing touches disk until those edits apply successfully.
+      const preview = globalEditStaging.previewProposal(proposalId);
+      if (!preview.success || preview.newContent == null || !preview.fullPath) {
+        this.postMessage({
+          type: 'error',
+          message: 'Could not compute the applied content (proposal may be gone). No files were changed.',
+        });
+      } else if (preview.appliedCount > 0) {
+        const applied = await this._applyViaEditor(preview);
+        if (!applied.ok) {
+          this.postMessage({
+            type: 'error',
+            message: `Could not apply the edits: ${applied.reason}. No files were changed.`,
+          });
+        } else {
+          globalEditStaging.finalizeProposal(proposalId);
+          this.postMessage({
+            type: 'proposalApplied',
+            proposalId,
+            appliedCount: preview.appliedCount,
+            totalCount: preview.totalCount,
+            filePath: preview.relativePath,
+          });
+        }
+      } else {
+        globalEditStaging.finalizeProposal(proposalId);
+        this.postMessage({
+          type: 'proposalApplied',
+          proposalId,
+          appliedCount: 0,
+          totalCount: preview.totalCount,
+          filePath: preview.relativePath,
+        });
+      }
     } else {
       globalEditStaging.discardProposal(proposalId);
       this.postMessage({ type: 'proposalApplied', proposalId, appliedCount: 0, totalCount: 0, filePath: proposal?.relativePath });
@@ -460,6 +488,44 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
       }
     } catch (err: any) {
       vscode.window.showErrorMessage(`ForgePilot: Could not list workspace symbols: ${err.message}`);
+    }
+  }
+
+  /** Applies the previewed content through the editor so edits join the undo stack. */
+  private async _applyViaEditor(preview: {
+    fullPath?: string;
+    originalContent?: string;
+    newContent?: string;
+  }): Promise<{ ok: boolean; reason?: string }> {
+    try {
+      const uri = vscode.Uri.file(preview.fullPath!);
+      const newContent = preview.newContent ?? '';
+      const exists = fs.existsSync(preview.fullPath!);
+
+      const edit = new vscode.WorkspaceEdit();
+      if (exists) {
+        const doc = await vscode.workspace.openTextDocument(uri);
+        const fullRange = new vscode.Range(
+          new vscode.Position(0, 0),
+          doc.lineAt(doc.lineCount - 1).range.end
+        );
+        edit.replace(uri, fullRange, newContent);
+      } else {
+        edit.createFile(uri, { ignoreIfExists: true });
+        edit.insert(uri, new vscode.Position(0, 0), newContent);
+      }
+
+      const ok = await vscode.workspace.applyEdit(edit);
+      if (!ok) {
+        return { ok: false, reason: 'editor rejected the edit' };
+      }
+      // Snapshot AFTER a successful apply so the undo command can restore it
+      globalSnapshotManager.createSnapshot(preview.fullPath!, preview.originalContent ?? '');
+      const saved = await vscode.workspace.openTextDocument(uri);
+      await saved.save();
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, reason: err?.message ?? String(err) };
     }
   }
 

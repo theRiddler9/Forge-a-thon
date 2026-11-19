@@ -110,6 +110,48 @@ export class EditStagingManager {
     return true;
   }
 
+  /**
+   * Computes the post-apply content without touching disk.
+   * Used by the editor-driven apply path (vscode.WorkspaceEdit) so edits land
+   * in the editor undo stack. The proposal is NOT removed from the map here;
+   * call finalizeProposal() after a successful apply.
+   */
+  previewProposal(proposalId: string): {
+    success: boolean;
+    appliedCount: number;
+    totalCount: number;
+    newContent?: string;
+    fullPath?: string;
+    relativePath?: string;
+    originalContent?: string;
+  } {
+    const proposal = this.proposals.get(proposalId);
+    if (!proposal) {
+      return { success: false, appliedCount: 0, totalCount: 0 };
+    }
+
+    const { newContent, appliedCount, totalCount } = applyHunks(
+      proposal.originalContent,
+      proposal.hunks,
+      Array.from(proposal.acceptedHunkIds)
+    );
+
+    return {
+      success: true,
+      appliedCount,
+      totalCount,
+      newContent,
+      fullPath: proposal.fullPath,
+      relativePath: proposal.relativePath,
+      originalContent: proposal.originalContent,
+    };
+  }
+
+  /** Removes the proposal from the staging map after a successful apply. */
+  finalizeProposal(proposalId: string): void {
+    this.proposals.delete(proposalId);
+  }
+
   applyProposal(proposalId: string): {
     success: boolean;
     appliedCount: number;
