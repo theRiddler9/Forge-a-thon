@@ -29,9 +29,32 @@ let streamingText = '';
 let streamingThinkingBody: HTMLElement | null = null;
 let activeModelLabel = '';
 let fallbackMode = false;
+let modelContexts: Record<string, number> = {};
+let lastBudgetUsed = 0;
 
 // Initial model sync
 vscode.postMessage({ type: 'getModels' });
+
+function fmtBudgetTokens(n: number): string {
+  return n >= 1_000_000
+    ? `${(n / 1e6).toFixed(1).replace(/\.0$/, '')}M`
+    : `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+}
+
+function renderBudget(used: number, total: number) {
+  if (!budgetValue || !budgetFill) return;
+  lastBudgetUsed = used;
+  const pct = Math.min(100, Math.round((used / total) * 100));
+  budgetValue.textContent = `${fmtBudgetTokens(used)} / ${fmtBudgetTokens(total)} tokens`;
+  budgetFill.style.width = `${pct}%`;
+  if (pct > 90) {
+    budgetFill.style.backgroundColor = '#f85149';
+  } else if (pct > 70) {
+    budgetFill.style.backgroundColor = '#d29922';
+  } else {
+    budgetFill.style.backgroundColor = '#2ea44f';
+  }
+}
 
 function showWelcome() {
   welcomeState.style.display = 'flex';
@@ -580,6 +603,9 @@ window.addEventListener('message', (event) => {
   const msg = event.data;
   switch (msg.type) {
     case 'modelsList':
+      if (msg.contexts && typeof msg.contexts === 'object') {
+        modelContexts = msg.contexts;
+      }
       if (Array.isArray(msg.models) && msg.models.length > 0) {
         modelSelect.innerHTML = '';
         for (const m of msg.models) {
@@ -606,27 +632,17 @@ window.addEventListener('message', (event) => {
           }
         }
         setFallbackMode(msg.fallback === true);
+        const total = modelContexts[msg.model] ?? 32768;
+        renderBudget(lastBudgetUsed, total);
       }
       break;
 
-    case 'budgetUpdate':
-      if (budgetValue && budgetFill) {
-        const used = msg.used ?? 0;
-        const total = msg.total ?? 30000;
-        const pct = Math.min(100, Math.round((used / total) * 100));
-        const kUsed = (used / 1000).toFixed(1).replace(/\.0$/, '');
-        const kTotal = Math.round(total / 1000);
-        budgetValue.textContent = `${kUsed}k / ${kTotal}k tokens`;
-        budgetFill.style.width = `${pct}%`;
-        if (pct > 90) {
-          budgetFill.style.backgroundColor = '#f85149';
-        } else if (pct > 70) {
-          budgetFill.style.backgroundColor = '#d29922';
-        } else {
-          budgetFill.style.backgroundColor = '#2ea44f';
-        }
-      }
+    case 'budgetUpdate': {
+      const modelTotal = modelContexts[activeModelLabel] ?? 32768;
+      const total = msg.total ?? modelTotal;
+      renderBudget(msg.used ?? 0, total);
       break;
+    }
 
     case 'fallbackActivated': {
       setFallbackMode(true);
