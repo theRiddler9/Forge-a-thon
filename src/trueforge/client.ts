@@ -150,7 +150,7 @@ export class TrueForgeClient {
               enableTools: ['@all'],
               requireApprovalForTools: ['@destructive', '@write', 'propose_write', 'run_command'],
               preload: false,
-              preloadTools: ['list_dir', 'read_file', 'search_text', 'find_symbol', 'get_context_budget_info'],
+              preloadTools: ['list_dir', 'read_file', 'search_text', 'find_symbol', 'get_context_budget_info', 'propose_write'],
             },
           ],
         },
