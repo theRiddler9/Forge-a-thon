@@ -42,6 +42,13 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
             type: 'status',
             model: data.model,
           });
+          this.postMessage({ type: 'session', label: 'Fresh Session' });
+          break;
+        case 'resetSession':
+          this.currentSessionId = undefined;
+          globalEditStaging.clearAll();
+          this.postMessage({ type: 'session', label: 'Fresh Session' });
+          this.postMessage({ type: 'status', model: this.client.getActiveModel() });
           break;
         case 'sendMessage':
           await this._handleUserMessage(data.text);
@@ -103,6 +110,10 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
         this.postMessage({
           type: 'status',
           model: this.client.getActiveModel(),
+        });
+        this.postMessage({
+          type: 'session',
+          label: `Session #${String(session.id).replace(/[^a-zA-Z0-9]/g, '').slice(-4)}`,
         });
       }
 
