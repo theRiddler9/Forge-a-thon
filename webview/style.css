@@ -1,0 +1,195 @@
+:root {
+  --bg-color: var(--vscode-sideBar-background, #1e1e1e);
+  --fg-color: var(--vscode-sideBar-foreground, #cccccc);
+  --border-color: var(--vscode-sideBarSectionHeader-border, #333333);
+  --input-bg: var(--vscode-input-background, #252526);
+  --input-fg: var(--vscode-input-foreground, #cccccc);
+  --input-border: var(--vscode-input-border, #3c3c3c);
+  --btn-bg: var(--vscode-button-background, #0e639c);
+  --btn-fg: var(--vscode-button-foreground, #ffffff);
+  --btn-hover: var(--vscode-button-hoverBackground, #1177bb);
+  --btn-danger-bg: var(--vscode-statusBarItem-errorBackground, #a80000);
+  --hunk-add-bg: rgba(40, 167, 69, 0.2);
+  --hunk-del-bg: rgba(220, 53, 69, 0.2);
+}
+
+body {
+  margin: 0;
+  padding: 12px;
+  font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+  background-color: var(--bg-color);
+  color: var(--fg-color);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+#header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 8px;
+}
+
+#header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+#model-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  background-color: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+}
+
+#chat-log {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+}
+
+.message {
+  padding: 8px 10px;
+  border-radius: 6px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.message.user {
+  background-color: var(--btn-bg);
+  color: var(--btn-fg);
+  align-self: flex-end;
+  max-width: 85%;
+}
+
+.message.agent {
+  background-color: var(--input-bg);
+  border: 1px solid var(--input-border);
+  align-self: flex-start;
+  max-width: 95%;
+  white-space: pre-wrap;
+}
+
+.tool-card {
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--btn-bg);
+  border-radius: 4px;
+  padding: 8px;
+  margin: 4px 0;
+  font-size: 12px;
+}
+
+.tool-card.destructive {
+  border-left-color: #ff9800;
+}
+
+.context-card {
+  background-color: rgba(0, 150, 136, 0.1);
+  border: 1px solid rgba(0, 150, 136, 0.3);
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 12px;
+}
+
+.proposal-review {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  padding: 10px;
+  margin-top: 6px;
+}
+
+.proposal-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.hunk-item {
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  margin-bottom: 6px;
+  padding: 6px;
+  background-color: var(--input-bg);
+}
+
+.hunk-diff-line.add {
+  background-color: var(--hunk-add-bg);
+  color: #85e89d;
+}
+
+.hunk-diff-line.del {
+  background-color: var(--hunk-del-bg);
+  color: #f97583;
+}
+
+.hunk-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+button {
+  background-color: var(--btn-bg);
+  color: var(--btn-fg);
+  border: none;
+  border-radius: 3px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+button:hover {
+  background-color: var(--btn-hover);
+}
+
+button.danger {
+  background-color: var(--btn-danger-bg);
+}
+
+button.success {
+  background-color: #28a745;
+}
+
+button.secondary {
+  background-color: transparent;
+  border: 1px solid var(--input-border);
+  color: var(--fg-color);
+}
+
+#input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+}
+
+#prompt-input {
+  width: 100%;
+  box-sizing: border-box;
+  background-color: var(--input-bg);
+  color: var(--input-fg);
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  padding: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  resize: vertical;
+  min-height: 50px;
+}
+
+#action-buttons {
+  display: flex;
+  justify-content: space-between;
+}
