@@ -22,6 +22,19 @@ const sessionLabel = document.getElementById('session-label') as HTMLElement;
 const chipFile = document.getElementById('chip-file') as HTMLElement;
 const chipSymbol = document.getElementById('chip-symbol') as HTMLElement;
 const attachChips = document.getElementById('attach-chips') as HTMLElement;
+const mcpToolsBtn = document.getElementById('mcp-tools-btn') as HTMLElement | null;
+const mcpPopover = document.getElementById('mcp-tools-popover') as HTMLElement | null;
+
+function toggleMcpPopover(force?: boolean) {
+  if (!mcpPopover) return;
+  const hidden = mcpPopover.hasAttribute('hidden');
+  const nextHidden = force === undefined ? !hidden : !force;
+  if (nextHidden) {
+    mcpPopover.setAttribute('hidden', '');
+  } else {
+    mcpPopover.removeAttribute('hidden');
+  }
+}
 
 let currentStreamingMessage: HTMLElement | null = null;
 let currentStreamingBody: HTMLElement | null = null;
@@ -543,6 +556,18 @@ chipFile.addEventListener('click', () => {
   vscode.postMessage({ type: 'pickFileMention' });
 });
 
+mcpToolsBtn?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleMcpPopover();
+});
+
+document.addEventListener('click', (e) => {
+  if (!mcpPopover || mcpPopover.hasAttribute('hidden')) return;
+  const target = e.target as HTMLElement;
+  if (target.closest('#mcp-tools-popover') || target.closest('#mcp-tools-btn')) return;
+  toggleMcpPopover(false);
+});
+
 chipSymbol.addEventListener('click', () => {
   vscode.postMessage({ type: 'pickSymbolMention' });
 });
@@ -586,6 +611,10 @@ promptInput.addEventListener('input', renderAttachChips);
 
 sendBtn.addEventListener('click', handleSend);
 cancelBtn.addEventListener('click', handleCancel);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') toggleMcpPopover(false);
+});
 
 promptInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {

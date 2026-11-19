@@ -1102,3 +1102,94 @@ button {
   overflow-y: auto;
   font-family: inherit;
 }
+
+/* ===== MCP tools popover ===== */
+.mcp-tools-popover {
+  position: fixed;
+  bottom: 76px;
+  right: 10px;
+  width: 264px;
+  background-color: #252526;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 40;
+  overflow: hidden;
+  animation: fadeIn 0.15s ease-in-out;
+}
+
+.mcp-tools-title {
+  padding: 7px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--fg-secondary);
+  border-bottom: 1px solid var(--border);
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.mcp-tools-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mcp-tools-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 5px;
+}
+
+.mcp-tools-list li:hover {
+  background-color: var(--bg-hover);
+}
+
+.mcp-tools-list code {
+  font-size: 10.5px;
+  color: #79b8ff;
+  min-width: 148px;
+}
+
+.mcp-tools-list span {
+  flex: 1;
+  font-size: 9.5px;
+  color: var(--fg-secondary);
+}
+
+.mcp-tools-list .badge {
+  display: inline-block;
+  font-style: normal;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  border-radius: 3px;
+  padding: 0 4px;
+  vertical-align: 1px;
+  margin-left: 4px;
+}
+
+.badge.ro {
+  color: var(--diff-add-fg);
+  background-color: rgba(63, 185, 80, 0.15);
+  border: 1px solid rgba(63, 185, 80, 0.4);
+}
+
+.badge.gate {
+  color: var(--amber);
+  background-color: rgba(210, 153, 34, 0.15);
+  border: 1px solid rgba(210, 153, 34, 0.4);
+}
+
+.mcp-tools-foot {
+  padding: 6px 10px;
+  font-size: 9px;
+  color: var(--fg-secondary);
+  border-top: 1px solid var(--border);
+  background-color: rgba(255, 255, 255, 0.02);
+}
