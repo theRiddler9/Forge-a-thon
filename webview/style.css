@@ -1056,3 +1056,35 @@ button {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.25; }
 }
+
+.failed-marker {
+  color: var(--diff-del-fg);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* Reasoning ("thinking") block for reasoning models */
+.thinking-block {
+  margin: 6px 0 2px 0;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  padding: 4px 8px 6px 8px;
+}
+
+.thinking-block summary {
+  font-size: 10px;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.thinking-text {
+  margin: 6px 0 2px 0;
+  font-size: 10px;
+  line-height: 1.45;
+  color: #8b98a5;
+  white-space: pre-wrap;
+  max-height: 120px;
+  overflow-y: auto;
+  font-family: inherit;
+}

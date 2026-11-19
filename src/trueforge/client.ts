@@ -34,6 +34,59 @@ export class TrueForgeClient {
     return this.config.baseUrl;
   }
 
+  getPrimaryModel(): string {
+    return this.config.primaryModel;
+  }
+
+  getFallbackModel(): string | undefined {
+    return this.config.fallbackModel;
+  }
+
+  hasFallback(): boolean {
+    return (
+      !!this.config.fallbackModel && this.config.fallbackModel !== this.config.primaryModel
+    );
+  }
+
+  markFallbackActivated(): void {
+    this.activeModel = this.config.fallbackModel!;
+    this.lastFallbackInfo = {
+      from: this.config.primaryModel,
+      to: this.config.fallbackModel!,
+      attempts: 1,
+      maxRetries: 1,
+    };
+  }
+
+  /**
+   * Runs a single turn and resolves with the final turn status.
+   * Unlike streamTurn, this always resolves (never throws), which lets call
+   * sites implement automatic model fallback on turn-time failures.
+   */
+  async runTurn(
+    sessionId: string,
+    userMessage: string,
+    callbacks: TurnStreamCallbacks = {}
+  ): Promise<{ status: string; message?: string }> {
+    return new Promise((resolve) => {
+      const wrapped: TurnStreamCallbacks = {
+        ...callbacks,
+        onDone: (status, message) => {
+          callbacks.onDone?.(status, message);
+          resolve({ status, message });
+        },
+        onError: (err: Error) => {
+          callbacks.onError?.(err);
+          resolve({ status: 'error', message: err?.message ?? String(err) });
+        },
+      };
+      this.streamTurn(sessionId, userMessage, wrapped).catch((err: any) => {
+        callbacks.onError?.(err);
+        resolve({ status: 'error', message: err?.message ?? String(err) });
+      });
+    });
+  }
+
   async listAvailableModels(): Promise<string[]> {
     try {
       const res = await this.sdkClient.models.list();
@@ -162,10 +215,18 @@ export class TrueForgeClient {
           const merged = existing ? mergeEventDelta(existing, event) : event;
           eventsMap.set(event.id, merged);
 
-          if (callbacks.onDelta) {
-            const textDelta = (event as any).delta?.content?.[0]?.text ?? (event as any).delta?.text ?? '';
-            if (textDelta) {
-              callbacks.onDelta(textDelta, event.id);
+          // Reasoning models (e.g. gpt-oss) stream reasoningContent deltas
+          // separately from content deltas. TrueForge flattens the OpenAI
+          // shape, so the text lives at the TOP level of the delta event.
+          const anyEvent = event as any;
+          if (typeof anyEvent.content === 'string' && anyEvent.content.length > 0) {
+            if (callbacks.onDelta) {
+              callbacks.onDelta(anyEvent.content, event.id);
+            }
+          }
+          if (typeof anyEvent.reasoningContent === 'string' && anyEvent.reasoningContent.length > 0) {
+            if (callbacks.onReasoningDelta) {
+              callbacks.onReasoningDelta(anyEvent.reasoningContent, event.id);
             }
           }
         } else {
@@ -189,8 +250,9 @@ export class TrueForgeClient {
         // Check for turn completion
         if ((event as any).type === 'turn.done') {
           const status = (event as any).state?.status ?? 'done';
+          const message = (event as any).state?.message as string | undefined;
           if (callbacks.onDone) {
-            callbacks.onDone(status);
+            callbacks.onDone(status, message);
           }
         }
       }

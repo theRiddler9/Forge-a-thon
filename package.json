@@ -71,12 +71,12 @@
         },
         "forgepilot.primaryModel": {
           "type": "string",
-          "default": "nvidia/nemotron-3-super-120b-a12b",
+          "default": "lmstudio/qwen25-coder-7b-instruct",
           "description": "Primary model name configured in TrueForge"
         },
         "forgepilot.fallbackModel": {
           "type": "string",
-          "default": "google-gemini/gemini-3-8-flash",
+          "default": "groq/openai-gpt-oss-20b",
           "description": "Fallback model name configured in TrueForge"
         },
         "forgepilot.tokenBudget": {

@@ -1,9 +1,18 @@
-# Example configuration for TrueForge models
-# Place custom endpoint or provider details here or configure inside TrueForge UI: Settings -> Models
+# Example model configuration for ForgePilot (TrueForge Settings -> Models).
+# Declare your actual provider keys inside TrueForge, never in this repo.
+# The names must match what TrueForge reports at GET /api/v1/models.
+
 primary:
-  name: "anthropic/claude-sonnet-4-6"
-  provider: "anthropic"
+  # LM Studio serving Qwen2.5-Coder-7B-Instruct locally (OpenAI-compatible,
+  # no API key). Any provider you register in TrueForge works.
+  name: "lmstudio/qwen25-coder-7b-instruct"
+  provider: "lmstudio"
 
 fallback:
-  name: "openai/gpt-4o"
-  provider: "openai"
+  # Used automatically (no user action) when the primary model fails:
+  # 3 retries with backoff at session creation, and an immediate
+  # single replay on the fallback model for turn-time failures.
+  name: "groq/openai-gpt-oss-20b"
+  provider: "groq"
+
+# Declare every model you used in the write-up.

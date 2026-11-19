@@ -26,6 +26,7 @@ const attachChips = document.getElementById('attach-chips') as HTMLElement;
 let currentStreamingMessage: HTMLElement | null = null;
 let currentStreamingBody: HTMLElement | null = null;
 let streamingText = '';
+let streamingThinkingBody: HTMLElement | null = null;
 let activeModelLabel = '';
 let fallbackMode = false;
 
@@ -35,6 +36,19 @@ vscode.postMessage({ type: 'getModels' });
 function showWelcome() {
   welcomeState.style.display = 'flex';
   chatLog.style.display = 'none';
+}
+
+function ensureThinkingBody(): HTMLElement | null {
+  if (streamingThinkingBody && currentStreamingMessage?.contains(streamingThinkingBody)) {
+    return streamingThinkingBody;
+  }
+  if (!currentStreamingMessage) return null;
+  const wrapper = document.createElement('details');
+  wrapper.className = 'thinking-block';
+  wrapper.innerHTML = '<summary>Model thinking…</summary><pre class="thinking-text"></pre>';
+  currentStreamingMessage.appendChild(wrapper);
+  streamingThinkingBody = wrapper.querySelector('.thinking-text') as HTMLElement;
+  return streamingThinkingBody;
 }
 
 function showChat() {
@@ -456,6 +470,7 @@ function handleSend() {
   showChat();
   resetToolLog();
   streamingText = '';
+  streamingThinkingBody = null;
   appendMessage('user', text);
   promptInput.value = '';
   renderAttachChips();
@@ -495,6 +510,7 @@ resetSessionBtn.addEventListener('click', () => {
   chatLog.innerHTML = '';
   resetToolLog();
   streamingText = '';
+  streamingThinkingBody = null;
   setFallbackMode(false);
   showWelcome();
   vscode.postMessage({ type: 'resetSession' });
@@ -614,6 +630,19 @@ window.addEventListener('message', (event) => {
 
     case 'fallbackActivated': {
       setFallbackMode(true);
+      // Finalize the failed model's bubble: swap the Streaming badge for a
+      // marker, format whatever partial text arrived, then start fresh —
+      // subsequent deltas open a new bubble in the fallback model's header.
+      if (currentStreamingMessage) {
+        const badge = currentStreamingMessage.querySelector('.streaming-badge');
+        if (badge) badge.outerHTML = '<span class="failed-marker">Failed</span>';
+      }
+      if (currentStreamingBody) {
+        currentStreamingBody.innerHTML = formatMessageBody(currentStreamingBody.textContent || '(no output — model request failed)');
+      }
+      currentStreamingMessage = null;
+      currentStreamingBody = null;
+      streamingText = '';
       const banner = document.createElement('div');
       banner.className = 'fallback-banner';
       const to = escapeHtml(String(msg.to ?? 'fallback model'));
@@ -640,12 +669,27 @@ window.addEventListener('message', (event) => {
       break;
 
     case 'tokenDelta':
-      if (currentStreamingBody) {
-        streamingText += msg.text;
-        currentStreamingBody.textContent += msg.text;
+      // Deltas may arrive after a silent fallback reset the streaming refs;
+      // start a fresh streaming bubble in the fallback model's header style.
+      if (!currentStreamingBody) {
+        currentStreamingMessage = appendMessage('agent', '', { streaming: true });
+        currentStreamingBody = currentStreamingMessage.querySelector('.msg-body');
+      }
+      streamingText += msg.text;
+      currentStreamingBody.textContent += msg.text;
+      chatLog.scrollTop = chatLog.scrollHeight;
+      break;
+
+    case 'reasoningDelta': {
+      // Reasoning models stream chain-of-thought separately from the answer;
+      // show it in a collapsible, muted block rather than the main bubble.
+      const pre = ensureThinkingBody();
+      if (pre) {
+        pre.textContent += msg.text;
         chatLog.scrollTop = chatLog.scrollHeight;
       }
       break;
+    }
 
     case 'toolCall':
       appendToolCard(msg.name, msg.args, msg.isDestructive);
