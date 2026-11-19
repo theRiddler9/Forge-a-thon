@@ -71,7 +71,7 @@
         },
         "forgepilot.primaryModel": {
           "type": "string",
-          "default": "groq/openai-gpt-oss-120b",
+          "default": "lmstudio/qwen25-coder-7b-instruct",
           "description": "Primary model name configured in TrueForge"
         },
         "forgepilot.fallbackModel": {

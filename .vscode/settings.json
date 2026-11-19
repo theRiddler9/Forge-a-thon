@@ -1,6 +1,6 @@
 {
   "forgepilot.serverUrl": "http://localhost:8790",
-  "forgepilot.primaryModel": "groq/openai-gpt-oss-120b",
+  "forgepilot.primaryModel": "lmstudio/qwen25-coder-7b-instruct",
   "forgepilot.fallbackModel": "groq/openai-gpt-oss-20b",
   "forgepilot.tokenBudget": 30000
 }

@@ -16,7 +16,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const config = vscode.workspace.getConfiguration('forgepilot');
   const serverUrl = config.get<string>('serverUrl', 'http://localhost:8790');
-  const primaryModel = config.get<string>('primaryModel', 'groq/openai-gpt-oss-120b');
+  const primaryModel = config.get<string>('primaryModel', 'lmstudio/qwen25-coder-7b-instruct');
   const fallbackModel = config.get<string>('fallbackModel', 'groq/openai-gpt-oss-20b');
   const tokenBudget = config.get<number>('tokenBudget', 30000);
 
