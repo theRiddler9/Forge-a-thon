@@ -6,6 +6,7 @@ export class TrueForgeClient {
   private sdkClient: TrueForge;
   private activeModel: string;
   private abortControllers = new Map<string, AbortController>();
+  public lastFallbackInfo: { from: string; to: string; attempts: number; maxRetries: number } | null = null;
 
   constructor(config: TrueForgeClientConfig) {
     this.config = {
@@ -26,6 +27,7 @@ export class TrueForgeClient {
 
   setActiveModel(model: string): void {
     this.activeModel = model;
+    this.lastFallbackInfo = null;
   }
 
   getBaseUrl(): string {
@@ -91,6 +93,7 @@ export class TrueForgeClient {
   async createSessionWithFallback(instructions: string): Promise<any> {
     const maxRetries = this.config.maxRetries ?? 3;
     let delay = this.config.retryDelayMs ?? 1000;
+    this.lastFallbackInfo = null;
 
     // Attempt primary model with backoff
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -113,6 +116,12 @@ export class TrueForgeClient {
       try {
         const session = await this.createSession(this.config.fallbackModel, instructions);
         this.activeModel = this.config.fallbackModel;
+        this.lastFallbackInfo = {
+          from: this.config.primaryModel,
+          to: this.config.fallbackModel,
+          attempts: maxRetries,
+          maxRetries,
+        };
         return session;
       } catch (fallbackErr: any) {
         throw new Error(
