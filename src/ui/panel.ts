@@ -169,7 +169,20 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
   private async _handleUserMessage(userInput: string) {
     try {
       const INSTRUCTIONS =
-        'You are ForgePilot, an expert coding assistant. Before proposing file edits, summarize the chosen context and explain why each file was selected. Always use propose_write for file edits.';
+        `You are ForgePilot, a careful and highly disciplined coding assistant operating inside VS Code via TrueForge and localhost MCP tools.
+
+CRITICAL CONTEXT SELECTION RULES:
+1. Never dump whole files into context. Always search first with list_dir, search_text, or find_symbol.
+2. When reading code, use read_file with targeted startLine and endLine ranges (max 400 lines).
+3. BEFORE proposing any file edits, output a structured 'Context chosen' summary list:
+   Context chosen:
+   - <file_path>: <one-line explanation of why this file/symbol was chosen>
+
+CRITICAL EDITING & SAFETY RULES:
+1. NEVER attempt to write to disk silently. You MUST propose all changes using the propose_write tool.
+2. For multi-file tasks, propose changes to all required files (implementation, test, documentation) using propose_write for each file.
+3. Provide the complete valid new content for each modified file to propose_write.
+4. Keep edits minimal, clean, and focused strictly on the user instruction.`;
 
       // 1. Resolve mentions
       const parsed = parseMentions(userInput);
@@ -303,7 +316,19 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
 
       let outcome = await this.client.runTurn(this.currentSessionId!, fullPrompt, makeHandlers());
 
-      // Automatic fallback: the configured primary model failed mid-turn.
+      // 3a. Handle rate limits (429) with automatic backoff retry
+      if (outcome.status === 'error' && outcome.message && /429|rate\s*limit/i.test(outcome.message)) {
+        const match = outcome.message.match(/try again in ([\d\.]+)s/i);
+        const waitSec = match ? Math.min(Math.ceil(parseFloat(match[1])) + 2, 35) : 15;
+        this.postMessage({
+          type: 'tokenDelta',
+          text: `\n\n⏳ *Rate limit encountered. Auto-retrying with backoff in ${waitSec}s...*\n`,
+        });
+        await new Promise((resolve) => setTimeout(resolve, waitSec * 1000));
+        outcome = await this.client.runTurn(this.currentSessionId!, fullPrompt, makeHandlers());
+      }
+
+      // 3b. Automatic fallback: the configured primary model failed mid-turn.
       // Replay the identical prompt once on the fallback model.
       if (outcome.status === 'error' && this.client.hasFallback()) {
         const from = this.client.getActiveModel();
@@ -328,15 +353,29 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
       this.sessionTokens += outcome.metrics?.inputTokens ?? 0;
       this._postContextUsage();
       if (outcome.status === 'error') {
+        const rawMsg = outcome.message ?? 'The model request failed.';
+        let userFriendlyNotice = '';
+        if (/429|rate\s*limit/i.test(rawMsg)) {
+          userFriendlyNotice = '\n\n💡 Tip: Upstream rate limit reached. Please wait ~30 seconds for quota replenishment and try again, or configure a higher-quota model in TrueForge Settings.';
+        } else if (/connect|econnrefused|network|timeout/i.test(rawMsg)) {
+          userFriendlyNotice = '\n\n💡 Tip: Temporary network or server connectivity issue. Please verify TrueForge is running and try again.';
+        } else {
+          userFriendlyNotice = '\n\n💡 Tip: The upstream AI model failed to complete the turn. Please try again shortly.';
+        }
+
         this.postMessage({
           type: 'error',
-          message: `${outcome.message ?? 'The model request failed.'}\nWorkspace unchanged (0 files modified).`,
+          message: `${rawMsg}${userFriendlyNotice}\n\nWorkspace unchanged (0 files modified).`,
         });
       } else {
         this.postMessage({ type: 'turnDone', status: outcome.status });
       }
     } catch (err: any) {
-      this.postMessage({ type: 'error', message: err.message });
+      const msg = err.message ?? String(err);
+      this.postMessage({
+        type: 'error',
+        message: `${msg}\n\n💡 Tip: AI agent turn interrupted due to server connectivity or model limits. Workspace unchanged (0 files modified).`,
+      });
     }
   }
 

@@ -127,6 +127,15 @@ export function registerInlineEditCommand(
 
           let outcome = await client.runTurn(activeSessionId, inlinePrompt, makeHandlers());
 
+          // Handle rate limits (429) with automatic backoff retry
+          if (outcome.status === 'error' && outcome.message && /429|rate\s*limit/i.test(outcome.message)) {
+            const match = outcome.message.match(/try again in ([\d\.]+)s/i);
+            const waitSec = match ? Math.min(Math.ceil(parseFloat(match[1])) + 2, 35) : 15;
+            vscode.window.showInformationMessage(`ForgePilot: Rate limit encountered. Auto-retrying in ${waitSec}s...`);
+            await new Promise((resolve) => setTimeout(resolve, waitSec * 1000));
+            outcome = await client.runTurn(activeSessionId, inlinePrompt, makeHandlers());
+          }
+
           // Automatic fallback: the configured primary model failed mid-turn.
           // Replay the identical instruction on the fallback model.
           if (outcome.status === 'error' && client.hasFallback()) {
@@ -145,8 +154,12 @@ export function registerInlineEditCommand(
           }
 
           if (outcome.status === 'error') {
+            const raw = outcome.message ?? 'model request failed';
+            const hint = /429|rate/i.test(raw)
+              ? ' Please try again in ~30s once provider quota replenishes.'
+              : ' Please verify server connectivity and try again.';
             vscode.window.showErrorMessage(
-              `Inline edit failed: ${outcome.message ?? 'model request failed'}. Workspace unchanged (0 files modified).`
+              `Inline edit failed: ${raw}.${hint} Workspace unchanged (0 files modified).`
             );
           }
         } catch (err: any) {

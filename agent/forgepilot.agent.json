@@ -22,7 +22,8 @@
           "read_file",
           "search_text",
           "find_symbol",
-          "get_context_budget_info"
+          "get_context_budget_info",
+          "propose_write"
         ]
       }
     ]
