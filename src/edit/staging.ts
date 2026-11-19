@@ -4,6 +4,14 @@ import crypto from 'crypto';
 import { computeHunks, applyHunks, HunkInfo } from './hunks.js';
 import { SnapshotManager, globalSnapshotManager } from './snapshot.js';
 
+function hashRelPathContent(path: string, content: string): string {
+  return crypto
+    .createHash('sha256')
+    .update(path.replace(/\\/g, '/') + content)
+    .digest('hex')
+    .slice(0, 16);
+}
+
 export interface StagedProposal {
   proposalId: string;
   workspaceRoot: string;
@@ -19,9 +27,19 @@ export interface StagedProposal {
   toolCallId?: string;
 }
 
+export interface RecentApplyEntry {
+  path: string;
+  relativePath: string;
+  contentHash: string;
+  appliedCount: number;
+  totalCount: number;
+  time: number;
+}
+
 export class EditStagingManager {
   private proposals = new Map<string, StagedProposal>();
   private snapshotManager: SnapshotManager;
+  private recentApplies: RecentApplyEntry[] = [];
 
   constructor(snapshotManager: SnapshotManager = globalSnapshotManager) {
     this.snapshotManager = snapshotManager;
@@ -39,11 +57,7 @@ export class EditStagingManager {
       originalContent = fs.readFileSync(fullPath, 'utf8');
     }
 
-    const contentHash = crypto
-      .createHash('sha256')
-      .update(relativePath + proposedContent)
-      .digest('hex')
-      .slice(0, 16);
+    const contentHash = hashRelPathContent(relativePath, proposedContent);
 
     const proposalId = `prop-${contentHash}`;
     const hunks = computeHunks(originalContent, proposedContent);
@@ -147,9 +161,46 @@ export class EditStagingManager {
     };
   }
 
-  /** Removes the proposal from the staging map after a successful apply. */
-  finalizeProposal(proposalId: string): void {
+  /**
+   * Removes the proposal from the staging map after a successful apply.
+   * When appliedCount/totalCount are supplied, the apply is also recorded so
+   * the MCP tool can report that the approved edit already landed (instead of
+   * staging a duplicate).
+   */
+  finalizeProposal(proposalId: string, appliedCount?: number, totalCount?: number): void {
+    const proposal = this.proposals.get(proposalId);
+    if (typeof appliedCount === 'number' && proposal) {
+      this.recentApplies.push({
+        path: proposal.fullPath,
+        relativePath: proposal.relativePath,
+        contentHash: proposal.contentHash,
+        appliedCount,
+        totalCount: totalCount ?? proposal.hunks.length,
+        time: Date.now(),
+      });
+      if (this.recentApplies.length > 20) {
+        this.recentApplies.shift();
+      }
+    }
     this.proposals.delete(proposalId);
+  }
+
+  /**
+   * Finds a recent apply of (path, newContent) — the approval resume flow runs
+   * the same MCP tool again after the extension already applied the edit, and
+   * the tool must not stage a duplicate proposal.
+   */
+  findRecentApply(path: string, newContent: string): RecentApplyEntry | undefined {
+    const hash = hashRelPathContent(path, newContent);
+    const cutoff = Date.now() - 5 * 60 * 1000;
+    for (let i = this.recentApplies.length - 1; i >= 0; i--) {
+      const entry = this.recentApplies[i];
+      if (entry.time < cutoff) break;
+      if (entry.contentHash === hash) {
+        return entry;
+      }
+    }
+    return undefined;
   }
 
   applyProposal(proposalId: string): {
