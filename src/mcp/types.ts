@@ -5,6 +5,7 @@ export interface McpServerOptions {
   host?: string;
   name?: string;
   version?: string;
+  workspaceRoot?: string;
 }
 
 export interface McpServerInstance {
