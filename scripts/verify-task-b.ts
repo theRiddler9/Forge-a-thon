@@ -25,8 +25,14 @@ export function verifyTaskB(flaskWorkspacePath: string): { success: boolean; det
   } catch {}
 
   // 2. Verify pytest tests/test_cli.py
+  const pythonBin = fs.existsSync(path.join(flaskWorkspacePath, '.venv/Scripts/python.exe'))
+    ? path.join(flaskWorkspacePath, '.venv/Scripts/python.exe')
+    : fs.existsSync(path.join(flaskWorkspacePath, '.venv/bin/python'))
+    ? path.join(flaskWorkspacePath, '.venv/bin/python')
+    : 'python';
+
   try {
-    const pytestOut = execSync('pytest tests/test_cli.py -q', {
+    const pytestOut = execSync(`"${pythonBin}" -m pytest tests/test_cli.py -q`, {
       cwd: flaskWorkspacePath,
       encoding: 'utf8',
     });

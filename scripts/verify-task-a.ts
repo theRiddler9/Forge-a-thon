@@ -23,6 +23,12 @@ export function verifyTaskA(flaskWorkspacePath: string): { success: boolean; det
   }
 
   // 2. Test execution with python
+  const pythonBin = fs.existsSync(path.join(flaskWorkspacePath, '.venv/Scripts/python.exe'))
+    ? path.join(flaskWorkspacePath, '.venv/Scripts/python.exe')
+    : fs.existsSync(path.join(flaskWorkspacePath, '.venv/bin/python'))
+    ? path.join(flaskWorkspacePath, '.venv/bin/python')
+    : 'python';
+
   const testCases = [
     { envVal: 'off', expected: 'False' },
     { envVal: 'OFF', expected: 'False' },
@@ -37,7 +43,7 @@ export function verifyTaskA(flaskWorkspacePath: string): { success: boolean; det
   for (const tc of testCases) {
     try {
       const out = execSync(
-        `python -c "from flask.helpers import get_debug_flag; print(get_debug_flag())"`,
+        `"${pythonBin}" -c "from flask.helpers import get_debug_flag; print(get_debug_flag())"`,
         {
           cwd: flaskWorkspacePath,
           env: { ...process.env, FLASK_DEBUG: tc.envVal },
