@@ -3,9 +3,9 @@
 # The names must match what TrueForge reports at GET /api/v1/models.
 
 primary:
-  # Google Gemini 3.5 Flash (free tier via AI Studio, 1M TPM, no API cost).
+  # Google Gemini 3.1 Flash Lite (free tier via AI Studio, 1M TPM, 1M context, no API cost).
   # Register via TrueForge Settings → Models → Google Gemini provider.
-  name: "google-gemini/gemini-3-5-flash"
+  name: "google-gemini/gemini-3-1-flash-lite"
   provider: "google-gemini"
 
 fallback:

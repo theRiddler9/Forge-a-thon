@@ -71,7 +71,7 @@
         },
         "forgepilot.primaryModel": {
           "type": "string",
-          "default": "google-gemini/gemini-3-5-flash",
+          "default": "google-gemini/gemini-3-1-flash-lite",
           "description": "Primary model name configured in TrueForge"
         },
         "forgepilot.fallbackModel": {

@@ -17,7 +17,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const config = vscode.workspace.getConfiguration('forgepilot');
   const serverUrl = config.get<string>('serverUrl', 'http://localhost:8790');
-  const primaryModel = config.get<string>('primaryModel', 'google-gemini/gemini-3-5-flash');
+  const primaryModel = config.get<string>('primaryModel', 'google-gemini/gemini-3-1-flash-lite');
   const fallbackModel = config.get<string>('fallbackModel', 'groq/qwen-3-8-27b');
   const tokenBudget = config.get<number>('tokenBudget', 30000);
 
