@@ -19,6 +19,7 @@ Built from scratch for the TrueForge Forge-a-thon (Round 1). MIT licensed.
 ## Demo
 
 - **Video:** [ForgePilot demo (4 min)](https://drive.google.com/file/d/1RLlnqAdQNODPK4owNfAOZgysbNhAXfoB/view?usp=drive_link)
+- **Write-up:** [Technical write-up (3 pages)](https://drive.google.com/file/d/1LZXDBqiZaiC3TxyFkiRw3W6uGPwTVpTW/view?usp=sharing)
 - **Screenshots:** full-size captures in [`docs/screenshots`](docs/screenshots)
 
 | Task A: inline edit with per-hunk review | Task B: agent run with MCP tool log |
@@ -377,7 +378,7 @@ the regression tests in `test/security/`, and Antigravity for UI scaffolding.
 ## Submission
 
 - Repository: [github.com/theRiddler9/Forge-a-thon](https://github.com/theRiddler9/Forge-a-thon)
-- Technical write-up: [docs/WRITEUP.pdf](docs/WRITEUP.pdf)
+- Technical write-up: [PDF (3 pages)](https://drive.google.com/file/d/1LZXDBqiZaiC3TxyFkiRw3W6uGPwTVpTW/view?usp=sharing), also in the repo at [WRITEUP.pdf](WRITEUP.pdf)
 - Demo video: [ForgePilot demo (4 min)](https://drive.google.com/file/d/1RLlnqAdQNODPK4owNfAOZgysbNhAXfoB/view?usp=drive_link)
 
 ## License
