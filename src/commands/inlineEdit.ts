@@ -61,11 +61,18 @@ export function registerInlineEditCommand(
 
           const makeHandlers = () => ({
             onToolApprovalRequired: async (toolCallId: string, toolName: string, args: any) => {
-              if (toolName !== 'propose_write') return;
+              if (!toolName.includes('propose_write')) return;
 
-              let fullNewContent = args.newContent ?? args.new_content ?? '';
-              // If the model returned only the modified function or snippet, splice it into the full document
+              const targetPath = args.path || args.filePath || filePath;
+              let rawNewContent = args.newContent ?? args.new_content ?? '';
+              const edits = args.edits;
+
+              let fullNewContent = rawNewContent;
+              // If the model returned only the modified function or snippet (and no structured edits),
+              // splice it into the selected region of the full document
               if (
+                (!edits || edits.length === 0) &&
+                fullNewContent &&
                 fullDocText.includes(selectedText) &&
                 !fullNewContent.includes(fullDocText.slice(0, 50)) &&
                 fullNewContent.length < fullDocText.length * 0.8
@@ -77,9 +84,10 @@ export function registerInlineEditCommand(
 
               const proposal = globalEditStaging.stageProposal(
                 workspaceRoot,
-                args.path || args.filePath || filePath,
+                targetPath,
                 fullNewContent,
-                toolCallId
+                toolCallId,
+                edits
               );
 
               globalHunkCodeLensProvider.refresh();
@@ -100,9 +108,10 @@ export function registerInlineEditCommand(
                 console.warn('Could not open diff view:', diffErr);
               }
 
-              // Show action buttons to user
+              // Show persistent modal action dialog to user (does not auto-dismiss)
               const choice = await vscode.window.showInformationMessage(
                 `ForgePilot proposed ${proposal.hunks.length} hunk(s) for ${filePath}.`,
+                { modal: true },
                 'Accept All',
                 'Reject All'
               );

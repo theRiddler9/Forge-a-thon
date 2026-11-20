@@ -285,7 +285,7 @@ CRITICAL EDITING & SAFETY RULES:
             this.postMessage({ type: 'reasoningDelta', text });
           },
           onToolApprovalRequired: (toolCallId: string, toolName: string, args: any) => {
-            if (toolName === 'propose_write') {
+            if (toolName.includes('propose_write')) {
               const proposal = globalEditStaging.stageProposal(
                 this.workspaceRoot,
                 args.path ?? args.filePath ?? '',
@@ -396,30 +396,44 @@ CRITICAL EDITING & SAFETY RULES:
     decision: 'allow' | 'deny',
     toolCallId?: string
   ) {
-    if (globalEditStaging.isFinalized(proposalId)) {
-      const fin = globalEditStaging.getFinalizedRecord(proposalId);
+    const proposal = globalEditStaging.getProposal(proposalId);
+    const realId = proposal?.proposalId ?? proposalId;
+    const resolvedToolCallId = toolCallId ?? proposal?.toolCallId;
+
+    if (globalEditStaging.isFinalized(realId) || globalEditStaging.isFinalized(proposalId)) {
+      const fin =
+        globalEditStaging.getFinalizedRecord(realId) ??
+        globalEditStaging.getFinalizedRecord(proposalId);
       this.postMessage({
         type: 'proposalApplied',
         proposalId,
         appliedCount: fin?.appliedCount ?? 1,
         totalCount: fin?.totalCount ?? 1,
-        filePath: fin?.relativePath,
+        filePath: fin?.relativePath ?? proposal?.relativePath,
       });
       return;
     }
 
-    const proposal = globalEditStaging.getProposal(proposalId);
-    const resolvedToolCallId = toolCallId ?? proposal?.toolCallId;
-
     if (decision === 'allow') {
       // Apply ONLY the hunks the user accepted (not a blanket accept-all).
       // Every write flows through the editor (WorkspaceEdit + save).
-      const result = await applyProposalViaEditor(proposalId);
+      const result = await applyProposalViaEditor(realId);
       if (!result.ok) {
-        if (!globalEditStaging.isFinalized(proposalId)) {
+        if (!globalEditStaging.isFinalized(realId) && !globalEditStaging.isFinalized(proposalId)) {
           this.postMessage({
             type: 'error',
             message: `Could not apply the edits: ${result.reason}. No files were changed.`,
+          });
+        } else {
+          const fin =
+            globalEditStaging.getFinalizedRecord(realId) ??
+            globalEditStaging.getFinalizedRecord(proposalId);
+          this.postMessage({
+            type: 'proposalApplied',
+            proposalId,
+            appliedCount: fin?.appliedCount ?? 1,
+            totalCount: fin?.totalCount ?? 1,
+            filePath: fin?.relativePath ?? proposal?.relativePath,
           });
         }
       } else {
@@ -432,8 +446,15 @@ CRITICAL EDITING & SAFETY RULES:
         });
       }
     } else {
+      globalEditStaging.discardProposal(realId);
       globalEditStaging.discardProposal(proposalId);
-      this.postMessage({ type: 'proposalApplied', proposalId, appliedCount: 0, totalCount: 0, filePath: proposal?.relativePath });
+      this.postMessage({
+        type: 'proposalApplied',
+        proposalId,
+        appliedCount: 0,
+        totalCount: 0,
+        filePath: proposal?.relativePath,
+      });
     }
 
     if (this.currentSessionId && resolvedToolCallId) {

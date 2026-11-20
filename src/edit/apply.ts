@@ -42,7 +42,11 @@ export async function applyProposalViaEditor(proposalId: string): Promise<Editor
     // Check if there is any recent apply that matches this proposal id
     const cleanId = proposalId.replace(/^prop-/, '');
     const matchedRecent = globalEditStaging.getAllRecentApplies().find(
-      (r) => r.contentHash.includes(cleanId) || cleanId.includes(r.contentHash)
+      (r) =>
+        r.contentHash.includes(cleanId) ||
+        cleanId.includes(r.contentHash) ||
+        r.relativePath === proposalId ||
+        proposalId.includes(r.relativePath)
     );
     if (matchedRecent) {
       return {
@@ -53,6 +57,7 @@ export async function applyProposalViaEditor(proposalId: string): Promise<Editor
         reason: 'Proposal already applied and saved.',
       };
     }
+    return { ok: false, reason: 'could not compute applied content (proposal may be gone)' };
   }
 
   if (proposal && proposal.acceptedHunkIds.size === 0 && proposal.rejectedHunkIds.size === 0) {
@@ -64,9 +69,12 @@ export async function applyProposalViaEditor(proposalId: string): Promise<Editor
     }
   }
 
-  const resolvedId = proposal?.proposalId ?? proposalId;
+  const resolvedId = proposal.proposalId;
   const preview = globalEditStaging.previewProposal(resolvedId);
   if (!preview.success || preview.newContent == null || !preview.fullPath) {
+    if (globalEditStaging.isFinalized(resolvedId) || globalEditStaging.isFinalized(proposalId)) {
+      return { ok: true, appliedCount: 1, totalCount: 1, relativePath: proposal.relativePath, reason: 'Already applied' };
+    }
     return { ok: false, reason: 'could not compute applied content (proposal may be gone)' };
   }
 
@@ -77,7 +85,7 @@ export async function applyProposalViaEditor(proposalId: string): Promise<Editor
 
   if ((preview.appliedCount ?? 0) === 0) {
     // Nothing was accepted — do not touch the document at all
-    globalEditStaging.finalizeProposal(proposalId, 0, preview.totalCount ?? 0);
+    globalEditStaging.finalizeProposal(resolvedId, 0, preview.totalCount ?? 0);
     return { ok: true, appliedCount: 0, totalCount: preview.totalCount ?? 0, relativePath: preview.relativePath };
   }
 
@@ -124,6 +132,7 @@ export async function applyProposalViaEditor(proposalId: string): Promise<Editor
     }
   } catch {}
 
+  globalEditStaging.finalizeProposal(resolvedId, preview.appliedCount, preview.totalCount);
   globalEditStaging.finalizeProposal(proposalId, preview.appliedCount, preview.totalCount);
 
   return {

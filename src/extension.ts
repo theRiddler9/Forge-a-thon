@@ -76,6 +76,15 @@ export async function activate(context: vscode.ExtensionContext) {
           const applied = await applyProposalViaEditor(proposalId);
           if (applied.ok) {
             vscode.window.showInformationMessage(`Applied accepted hunks to ${proposal.relativePath}.`);
+            if (proposal.toolCallId) {
+              try {
+                const sessions = await (client as any).sdkClient?.sessions?.list?.();
+                const latestSessionId = sessions?.data?.[0]?.id;
+                if (latestSessionId) {
+                  await client.resumeApproval(latestSessionId, proposal.toolCallId, 'allow');
+                }
+              } catch {}
+            }
           } else {
             vscode.window.showErrorMessage(`ForgePilot: Could not apply the edits: ${applied.reason}. No files were changed.`);
           }
@@ -90,6 +99,15 @@ export async function activate(context: vscode.ExtensionContext) {
         const proposal = globalEditStaging.getProposal(proposalId);
         if (proposal && proposal.acceptedHunkIds.size + proposal.rejectedHunkIds.size === proposal.hunks.length) {
           await applyProposalViaEditor(proposalId);
+          if (proposal.toolCallId) {
+            try {
+              const sessions = await (client as any).sdkClient?.sessions?.list?.();
+              const latestSessionId = sessions?.data?.[0]?.id;
+              if (latestSessionId) {
+                await client.resumeApproval(latestSessionId, proposal.toolCallId, 'deny', 'Rejected by user in diff review');
+              }
+            } catch {}
+          }
         }
         globalHunkCodeLensProvider.refresh();
       }

@@ -295,7 +295,7 @@ export class EditStagingManager {
     hunkId: string,
     decision: 'accepted' | 'rejected'
   ): boolean {
-    const proposal = this.proposals.get(proposalId);
+    const proposal = this.getProposal(proposalId);
     if (!proposal) return false;
 
     const hunk = proposal.hunks.find((h) => h.id === hunkId);
@@ -314,7 +314,7 @@ export class EditStagingManager {
   }
 
   acceptAllHunks(proposalId: string): boolean {
-    const proposal = this.proposals.get(proposalId);
+    const proposal = this.getProposal(proposalId);
     if (!proposal) return false;
 
     for (const hunk of proposal.hunks) {
@@ -340,7 +340,7 @@ export class EditStagingManager {
     relativePath?: string;
     originalContent?: string;
   } {
-    const proposal = this.proposals.get(proposalId);
+    const proposal = this.getProposal(proposalId);
     if (!proposal) {
       return { success: false, appliedCount: 0, totalCount: 0 };
     }
@@ -369,41 +369,79 @@ export class EditStagingManager {
    * staging a duplicate).
    */
   finalizeProposal(proposalId: string, appliedCount?: number, totalCount?: number): void {
-    const proposal = this.proposals.get(proposalId);
-    if (proposal) {
-      const count = typeof appliedCount === 'number' ? appliedCount : proposal.acceptedHunkIds.size;
-      const total = totalCount ?? proposal.hunks.length;
-      this.finalizedProposals.set(proposalId, {
-        proposalId,
+    const proposal = this.getProposal(proposalId);
+    const realId = proposal?.proposalId ?? proposalId;
+    const rel = proposal?.relativePath ?? '';
+    const full = proposal?.fullPath ?? '';
+    const count = typeof appliedCount === 'number' ? appliedCount : (proposal?.acceptedHunkIds.size ?? 1);
+    const total = totalCount ?? (proposal?.hunks.length ?? 1);
+
+    const record: FinalizedProposalRecord = {
+      proposalId: realId,
+      relativePath: rel,
+      fullPath: full,
+      appliedCount: count,
+      totalCount: total,
+      time: Date.now(),
+    };
+
+    this.finalizedProposals.set(realId, record);
+    this.finalizedProposals.set(proposalId, record);
+    if (rel) this.finalizedProposals.set(rel, record);
+
+    if (proposal && typeof appliedCount === 'number') {
+      this.recentApplies.push({
+        path: proposal.fullPath,
         relativePath: proposal.relativePath,
-        fullPath: proposal.fullPath,
-        appliedCount: count,
+        contentHash: proposal.contentHash,
+        appliedCount,
         totalCount: total,
         time: Date.now(),
       });
-      if (typeof appliedCount === 'number') {
-        this.recentApplies.push({
-          path: proposal.fullPath,
-          relativePath: proposal.relativePath,
-          contentHash: proposal.contentHash,
-          appliedCount,
-          totalCount: total,
-          time: Date.now(),
-        });
-        if (this.recentApplies.length > 20) {
-          this.recentApplies.shift();
-        }
+      if (this.recentApplies.length > 20) {
+        this.recentApplies.shift();
       }
     }
+
+    this.proposals.delete(realId);
     this.proposals.delete(proposalId);
   }
 
   isFinalized(proposalId: string): boolean {
-    return this.finalizedProposals.has(proposalId);
+    if (this.finalizedProposals.has(proposalId)) return true;
+    const clean = proposalId.replace(/^prop-/, '');
+    for (const rec of this.finalizedProposals.values()) {
+      if (
+        rec.proposalId === proposalId ||
+        rec.relativePath === proposalId ||
+        rec.fullPath === proposalId ||
+        proposalId.includes(rec.proposalId) ||
+        rec.proposalId.includes(proposalId) ||
+        (clean.length >= 8 && rec.proposalId.includes(clean))
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   getFinalizedRecord(proposalId: string): FinalizedProposalRecord | undefined {
-    return this.finalizedProposals.get(proposalId);
+    const direct = this.finalizedProposals.get(proposalId);
+    if (direct) return direct;
+    const clean = proposalId.replace(/^prop-/, '');
+    for (const rec of this.finalizedProposals.values()) {
+      if (
+        rec.proposalId === proposalId ||
+        rec.relativePath === proposalId ||
+        rec.fullPath === proposalId ||
+        proposalId.includes(rec.proposalId) ||
+        rec.proposalId.includes(proposalId) ||
+        (clean.length >= 8 && rec.proposalId.includes(clean))
+      ) {
+        return rec;
+      }
+    }
+    return undefined;
   }
 
   /**
@@ -479,12 +517,16 @@ export class EditStagingManager {
   }
 
   discardProposal(proposalId: string): void {
+    const proposal = this.getProposal(proposalId);
+    if (proposal) {
+      this.proposals.delete(proposal.proposalId);
+    }
     this.proposals.delete(proposalId);
   }
 
   clearAll(): void {
     this.proposals.clear();
-    this.finalizedProposals.clear();
+    // Keep finalizedProposals and recentApplies so history and idempotency are preserved
   }
 }
 

@@ -357,7 +357,7 @@ function appendPendingActionCard(toolName: string, args: any) {
 }
 
 function appendToolCard(name: string, args: any, isDestructive: boolean = false) {
-  if (name === 'propose_write') {
+  if (name.includes('propose_write')) {
     // Propose write is displayed exclusively via the dedicated proposal review card
     return;
   }

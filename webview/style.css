@@ -780,10 +780,11 @@ button {
   background-color: rgba(210, 153, 34, 0.07);
   border: 1px solid rgba(210, 153, 34, 0.35);
   border-radius: 8px;
-  overflow: hidden;
-  margin: 10px 0;
+  overflow: visible;
+  margin: 12px 0;
   min-height: 48px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  clear: both;
 }
 
 .pending-tool-header {
@@ -792,6 +793,8 @@ button {
   justify-content: space-between;
   padding: 6px 10px;
   border-bottom: 1px solid rgba(210, 153, 34, 0.25);
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .pending-tool-title {
@@ -808,10 +811,11 @@ button {
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
+  flex-wrap: wrap;
 }
 
-.pending-tool-icon { color: var(--amber); display: flex; }
-.pending-tool-main { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pending-tool-icon { color: var(--amber); display: flex; flex-shrink: 0; }
+.pending-tool-main { flex: 1 1 160px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .pending-tool-name { font-size: 11px; color: var(--fg-primary); font-family: var(--vscode-editor-font-family, monospace); word-break: break-all; }
 .pending-tool-name code { color: #79b8ff; }
 .pending-tool-sub { font-size: 10px; color: var(--fg-secondary); }
@@ -825,6 +829,7 @@ button {
   border-radius: 4px;
   padding: 2px 8px;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* ===== Figma redesign: proposal review card ===== */
@@ -833,9 +838,10 @@ button {
   border: 1px solid var(--border);
   border-left: 3px solid var(--amber);
   border-radius: 8px;
-  overflow: hidden;
-  margin: 10px 0;
+  overflow: visible;
+  margin: 12px 0;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  clear: both;
 }
 
 .proposal-review.resolved { opacity: 0.85; border-left-color: #3fb950; }
@@ -848,9 +854,10 @@ button {
   background-color: rgba(255, 255, 255, 0.03);
   border-bottom: 1px solid var(--border);
   gap: 8px;
+  flex-wrap: wrap;
 }
 
-.proposal-file { display: flex; align-items: center; gap: 7px; min-width: 0; color: var(--fg-secondary); }
+.proposal-file { display: flex; align-items: center; gap: 7px; min-width: 0; color: var(--fg-secondary); flex: 1 1 180px; }
 .proposal-path {
   font-family: var(--vscode-editor-font-family, monospace);
   font-size: 11.5px;
@@ -868,6 +875,10 @@ button {
 .proposal-actions {
   display: flex;
   align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
   gap: 6px;
   flex-shrink: 0;
 }
@@ -950,6 +961,7 @@ button {
   gap: 6px;
   padding: 7px 10px;
   border-top: 1px solid var(--border);
+  flex-wrap: wrap;
 }
 
 .reject-all-btn {
