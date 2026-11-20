@@ -11,6 +11,7 @@ export class TrueForgeClient {
   private sdkClient: TrueForge;
   private activeModel: string;
   private abortControllers = new Map<string, AbortController>();
+  private activeTurnIds = new Map<string, string>();
   public lastFallbackInfo: { from: string; to: string; attempts: number; maxRetries: number } | null = null;
 
   constructor(config: TrueForgeClientConfig) {
@@ -273,6 +274,14 @@ export class TrueForgeClient {
           callbacks.onEvent(event, id ?? 0);
         }
 
+        // Track active turn ID for this session
+        if ((event as any).type === 'turn.created') {
+          const tId = (event as any).turnId ?? (event as any).turn_id ?? (event as any).id;
+          if (tId) {
+            this.activeTurnIds.set(sessionId, tId);
+          }
+        }
+
         // Check for tool approval requirement
         if ((event as any).type === 'tool.approval_required') {
           const rawCalls = (event as any).toolCalls ?? (event as any).tool_calls ?? [];
@@ -356,22 +365,35 @@ export class TrueForgeClient {
       approval: decision === 'allow' ? { status: 'allow' } : { status: 'deny', reason },
     };
 
+    // 1. Try createTurnEvents with the tracked active turnId
+    const activeTurnId = this.activeTurnIds.get(sessionId);
+    if (activeTurnId && typeof (this.sdkClient.sessions as any).createTurnEvents === 'function') {
+      try {
+        return await (this.sdkClient.sessions as any).createTurnEvents(sessionId, activeTurnId, {
+          events: [approvalPayload],
+        });
+      } catch (err: any) {
+        console.warn(`createTurnEvents with activeTurnId failed: ${err.message}`);
+      }
+    }
+
+    // 2. Try fetching the latest turn ID
+    try {
+      const turns = await this.sdkClient.sessions.listTurns(sessionId);
+      const lastTurnId = turns.data?.[0]?.id;
+      if (lastTurnId && typeof (this.sdkClient.sessions as any).createTurnEvents === 'function') {
+        return await (this.sdkClient.sessions as any).createTurnEvents(sessionId, lastTurnId, {
+          events: [approvalPayload],
+        });
+      }
+    } catch {}
+
+    // 3. Fallback: try direct createTurn (if previous turn finished done/paused)
     try {
       return await this.sdkClient.sessions.createTurn(sessionId, {
         input: [approvalPayload],
       });
     } catch (err: any) {
-      try {
-        const turns = await this.sdkClient.sessions.listTurns(sessionId);
-        const lastTurnId = turns.data?.[0]?.id;
-        if (lastTurnId && typeof (this.sdkClient.sessions as any).createTurnEvents === 'function') {
-          return await (this.sdkClient.sessions as any).createTurnEvents(sessionId, lastTurnId, {
-            events: [approvalPayload],
-          });
-        }
-      } catch {
-        // Silent fallback — editor already applied/discarded proposal safely
-      }
       console.warn(`Approval resume acknowledged locally: ${err.message}`);
       return null;
     }

@@ -37,7 +37,24 @@ export async function applyProposalViaEditor(proposalId: string): Promise<Editor
     };
   }
 
-  const proposal = globalEditStaging.getProposal(proposalId);
+  let proposal = globalEditStaging.getProposal(proposalId);
+  if (!proposal) {
+    // Check if there is any recent apply that matches this proposal id
+    const cleanId = proposalId.replace(/^prop-/, '');
+    const matchedRecent = globalEditStaging.getAllRecentApplies().find(
+      (r) => r.contentHash.includes(cleanId) || cleanId.includes(r.contentHash)
+    );
+    if (matchedRecent) {
+      return {
+        ok: true,
+        appliedCount: matchedRecent.appliedCount,
+        totalCount: matchedRecent.totalCount,
+        relativePath: matchedRecent.relativePath,
+        reason: 'Proposal already applied and saved.',
+      };
+    }
+  }
+
   if (proposal && proposal.acceptedHunkIds.size === 0 && proposal.rejectedHunkIds.size === 0) {
     // If user clicked apply/accept without explicitly picking individual hunks,
     // accept all non-rejected hunks by default
@@ -47,7 +64,8 @@ export async function applyProposalViaEditor(proposalId: string): Promise<Editor
     }
   }
 
-  const preview = globalEditStaging.previewProposal(proposalId);
+  const resolvedId = proposal?.proposalId ?? proposalId;
+  const preview = globalEditStaging.previewProposal(resolvedId);
   if (!preview.success || preview.newContent == null || !preview.fullPath) {
     return { ok: false, reason: 'could not compute applied content (proposal may be gone)' };
   }

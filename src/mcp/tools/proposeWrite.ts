@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { globalEditStaging, applyEditsToContent } from '../../edit/staging.js';
+import { globalEditStaging, applyEditsToContent, reconcileProposedContent } from '../../edit/staging.js';
 
 export interface ProposeWriteArgs {
   path: string;
@@ -22,6 +22,8 @@ export async function executeProposeWrite(
   let finalContent = args.newContent ?? '';
   if (Array.isArray(args.edits) && args.edits.length > 0 && origContent) {
     finalContent = applyEditsToContent(origContent, args.edits);
+  } else if (origContent && finalContent) {
+    finalContent = reconcileProposedContent(origContent, finalContent);
   }
 
   // If this exact edit was already applied by the approval flow (the user

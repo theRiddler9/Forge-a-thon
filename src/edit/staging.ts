@@ -162,6 +162,49 @@ export function reconcileProposedContent(
     }
   }
 
+  // Case C: Proposed content is a middle snippet (e.g. inline edit replacing a function)
+  const midFirstAnchor = propNonEmpty[0].line;
+  let midStartIdx = -1;
+  for (let i = 0; i < origLines.length; i++) {
+    if (origLines[i].trim() === midFirstAnchor) {
+      midStartIdx = i;
+      break;
+    }
+  }
+
+  if (midStartIdx >= 0) {
+    const midLastAnchor = propNonEmpty[propNonEmpty.length - 1].line;
+    let midEndIdx = -1;
+
+    for (let i = midStartIdx; i < origLines.length; i++) {
+      if (origLines[i].trim() === midLastAnchor) {
+        midEndIdx = i;
+        break;
+      }
+    }
+
+    if (midEndIdx === -1) {
+      for (let i = midStartIdx + 1; i < origLines.length; i++) {
+        const line = origLines[i];
+        if (/^(def\s+|class\s+|@)/.test(line.trim()) && !line.startsWith(' ') && !line.startsWith('\t')) {
+          midEndIdx = i - 1;
+          break;
+        }
+      }
+    }
+
+    if (midEndIdx !== -1 && (midStartIdx > 0 || midEndIdx < origLines.length - 1)) {
+      const prefix = origLines.slice(0, midStartIdx);
+      const suffix = origLines.slice(midEndIdx + 1);
+      const eol = originalContent.includes('\r\n') ? '\r\n' : '\n';
+      const parts: string[] = [];
+      if (prefix.length > 0) parts.push(prefix.join(eol));
+      parts.push(proposedContent.trim());
+      if (suffix.length > 0) parts.push(suffix.join(eol));
+      return parts.join(eol + eol);
+    }
+  }
+
   return proposedContent;
 }
 
@@ -182,7 +225,8 @@ export class EditStagingManager {
     toolCallId?: string,
     edits?: Array<{ search: string; replace: string }>
   ): StagedProposal {
-    const fullPath = path.resolve(workspaceRoot, relativePath);
+    const normRel = relativePath.replace(/\\/g, '/').replace(/^\.\//, '');
+    const fullPath = path.resolve(workspaceRoot, normRel);
     let originalContent = '';
     if (fs.existsSync(fullPath)) {
       originalContent = fs.readFileSync(fullPath, 'utf8');
@@ -195,7 +239,7 @@ export class EditStagingManager {
       proposedContent = reconcileProposedContent(originalContent, proposedContent);
     }
 
-    const contentHash = hashRelPathContent(relativePath, proposedContent);
+    const contentHash = hashRelPathContent(normRel, proposedContent);
 
     const proposalId = `prop-${contentHash}`;
     const hunks = computeHunks(originalContent, proposedContent);
@@ -203,7 +247,7 @@ export class EditStagingManager {
     const proposal: StagedProposal = {
       proposalId,
       workspaceRoot,
-      relativePath: relativePath.replace(/\\/g, '/'),
+      relativePath: normRel,
       fullPath,
       originalContent,
       proposedContent,
@@ -220,7 +264,26 @@ export class EditStagingManager {
   }
 
   getProposal(proposalId: string): StagedProposal | undefined {
-    return this.proposals.get(proposalId);
+    const direct = this.proposals.get(proposalId);
+    if (direct) return direct;
+
+    // Fallback: search by prefix/hash or relative path
+    for (const p of this.proposals.values()) {
+      if (
+        p.proposalId === proposalId ||
+        p.relativePath === proposalId ||
+        p.fullPath === proposalId ||
+        proposalId.includes(p.proposalId) ||
+        p.proposalId.includes(proposalId)
+      ) {
+        return p;
+      }
+    }
+    return undefined;
+  }
+
+  getAllRecentApplies(): RecentApplyEntry[] {
+    return [...this.recentApplies];
   }
 
   getAllProposals(): StagedProposal[] {
@@ -348,15 +411,34 @@ export class EditStagingManager {
    * the same MCP tool again after the extension already applied the edit, and
    * the tool must not stage a duplicate proposal.
    */
-  findRecentApply(path: string, newContent: string): RecentApplyEntry | undefined {
-    const hash = hashRelPathContent(path, newContent);
+  findRecentApply(pathOrRel: string, newContent: string): RecentApplyEntry | undefined {
+    const norm = pathOrRel.replace(/\\/g, '/');
+    const hash = hashRelPathContent(norm, newContent);
     const cutoff = Date.now() - 5 * 60 * 1000;
     for (let i = this.recentApplies.length - 1; i >= 0; i--) {
       const entry = this.recentApplies[i];
       if (entry.time < cutoff) break;
+      const pathMatches =
+        entry.relativePath === norm ||
+        entry.path.replace(/\\/g, '/').endsWith(norm) ||
+        norm.endsWith(entry.relativePath);
+      if (!pathMatches) continue;
+
       if (entry.contentHash === hash) {
         return entry;
       }
+
+      // If the proposed content (or snippet) is already present in the file on disk
+      // following user approval, treat it as already applied
+      try {
+        if (fs.existsSync(entry.path)) {
+          const currentOnDisk = fs.readFileSync(entry.path, 'utf8');
+          const trimmed = newContent.trim();
+          if (trimmed.length > 0 && currentOnDisk.includes(trimmed)) {
+            return entry;
+          }
+        }
+      } catch {}
     }
     return undefined;
   }
