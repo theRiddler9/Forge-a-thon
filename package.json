@@ -71,12 +71,12 @@
         },
         "forgepilot.primaryModel": {
           "type": "string",
-          "default": "lmstudio/qwen25-coder-7b-instruct",
+          "default": "google-gemini/gemini-3-5-flash",
           "description": "Primary model name configured in TrueForge"
         },
         "forgepilot.fallbackModel": {
           "type": "string",
-          "default": "groq/openai-gpt-oss-20b",
+          "default": "groq/qwen-3-8-27b",
           "description": "Fallback model name configured in TrueForge"
         },
         "forgepilot.tokenBudget": {

@@ -3,16 +3,16 @@
 # The names must match what TrueForge reports at GET /api/v1/models.
 
 primary:
-  # LM Studio serving Qwen2.5-Coder-7B-Instruct locally (OpenAI-compatible,
-  # no API key). Any provider you register in TrueForge works.
-  name: "lmstudio/qwen25-coder-7b-instruct"
-  provider: "lmstudio"
+  # Google Gemini 3.5 Flash (free tier via AI Studio, 1M TPM, no API cost).
+  # Register via TrueForge Settings → Models → Google Gemini provider.
+  name: "google-gemini/gemini-3-5-flash"
+  provider: "google-gemini"
 
 fallback:
   # Used automatically (no user action) when the primary model fails:
   # 3 retries with backoff at session creation, and an immediate
   # single replay on the fallback model for turn-time failures.
-  name: "groq/openai-gpt-oss-20b"
+  name: "groq/qwen-3-8-27b"
   provider: "groq"
 
 # Declare every model you used in the write-up.
