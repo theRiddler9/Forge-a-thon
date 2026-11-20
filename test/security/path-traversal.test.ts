@@ -14,9 +14,9 @@ import { SnapshotManager } from '../../src/edit/snapshot.js';
  * agent (or a prompt-injected one) must not be able to read or write files
  * outside the opened workspace.
  *
- * Tests marked `it.fails` document CONFIRMED vulnerabilities: they assert the
- * safe behaviour, currently fail, and will start passing (and flag themselves)
- * once the flaw is fixed.
+ * The guard lives in `src/mcp/tools/pathGuard.ts`; staging re-checks the
+ * resolved path immediately before writing. These tests fail if either
+ * layer regresses.
  */
 describe('Path traversal / workspace confinement', () => {
   // workspaceRoot is a dedicated dir; the "secret" lives one level up.
@@ -51,7 +51,7 @@ describe('Path traversal / workspace confinement', () => {
 
   describe('read_file', () => {
     for (const payload of [...traversalPayloads, ...absolutePayloads]) {
-      it.fails(`refuses to read outside workspace via "${payload}"`, async () => {
+      it(`refuses to read outside workspace via "${payload}"`, async () => {
         const result = await executeReadFile(workspaceRoot, { path: payload });
         const text = result.content[0].text;
         // SAFE behaviour: either an error or a not-found confined to workspace.
@@ -61,13 +61,13 @@ describe('Path traversal / workspace confinement', () => {
   });
 
   describe('list_dir', () => {
-    it.fails('refuses to list the parent directory', async () => {
+    it('refuses to list the parent directory', async () => {
       const result = await executeListDir(workspaceRoot, { relativePath: '..' });
       const text = result.content[0].text;
       expect(text).not.toContain('secret.txt');
     });
 
-    it.fails('refuses to list an absolute path outside workspace', async () => {
+    it('refuses to list an absolute path outside workspace', async () => {
       const result = await executeListDir(workspaceRoot, { relativePath: baseDir });
       const text = result.content[0].text;
       expect(text).not.toContain('secret.txt');
@@ -99,7 +99,7 @@ describe('Path traversal / workspace confinement', () => {
   });
 
   describe('propose_write / staging apply', () => {
-    it.fails('staging refuses paths that escape the workspace', async () => {
+    it('staging refuses paths that escape the workspace', async () => {
       const staging = new EditStagingManager(new SnapshotManager());
       const proposal = staging.stageProposal(workspaceRoot, '../pwned.txt', 'malicious\n');
       staging.acceptAllHunks(proposal.proposalId);
@@ -107,7 +107,7 @@ describe('Path traversal / workspace confinement', () => {
       expect(fs.existsSync(path.join(baseDir, 'pwned.txt'))).toBe(false);
     });
 
-    it.fails('staging refuses absolute paths outside the workspace', async () => {
+    it('staging refuses absolute paths outside the workspace', async () => {
       const staging = new EditStagingManager(new SnapshotManager());
       const absTarget = path.join(baseDir, 'abs-pwned.txt');
       const proposal = staging.stageProposal(workspaceRoot, absTarget, 'malicious\n');

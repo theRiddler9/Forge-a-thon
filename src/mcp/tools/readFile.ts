@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { globalContextBudget } from './contextBudget.js';
+import { resolveInWorkspace, WorkspaceEscapeError } from './pathGuard.js';
 
 export interface ReadFileArgs {
   path: string;
@@ -14,7 +15,15 @@ export async function executeReadFile(
   workspaceRoot: string,
   args: ReadFileArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const fullPath = path.resolve(workspaceRoot, args.path);
+  let fullPath: string;
+  try {
+    fullPath = resolveInWorkspace(workspaceRoot, args.path);
+  } catch (err) {
+    if (err instanceof WorkspaceEscapeError) {
+      return { content: [{ type: 'text', text: err.message }] };
+    }
+    throw err;
+  }
   const relPath = path.relative(workspaceRoot, fullPath).replace(/\\/g, '/');
 
   if (!fs.existsSync(fullPath)) {

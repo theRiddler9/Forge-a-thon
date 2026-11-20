@@ -3,6 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { computeHunks, applyHunks, HunkInfo } from './hunks.js';
 import { SnapshotManager, globalSnapshotManager } from './snapshot.js';
+import { isInsideWorkspace } from '../mcp/tools/pathGuard.js';
 
 function hashRelPathContent(path: string, content: string): string {
   return crypto
@@ -345,6 +346,10 @@ export class EditStagingManager {
       return { success: false, appliedCount: 0, totalCount: 0 };
     }
 
+    if (!isInsideWorkspace(proposal.workspaceRoot, proposal.fullPath)) {
+      return { success: false, appliedCount: 0, totalCount: 0 };
+    }
+
     const { newContent, appliedCount, totalCount } = applyHunks(
       proposal.originalContent,
       proposal.hunks,
@@ -497,6 +502,13 @@ export class EditStagingManager {
       proposal.hunks,
       Array.from(proposal.acceptedHunkIds)
     );
+
+    // Last line of defence: never write outside the workspace, even if a
+    // proposal was staged by a hostile caller.
+    if (!isInsideWorkspace(proposal.workspaceRoot, proposal.fullPath)) {
+      this.proposals.delete(proposalId);
+      return { success: false, appliedCount: 0, totalCount };
+    }
 
     if (appliedCount > 0) {
       // Create snapshot before modifying disk

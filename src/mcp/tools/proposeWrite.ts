@@ -1,6 +1,6 @@
 import fs from 'fs';
-import path from 'path';
 import { globalEditStaging, applyEditsToContent, reconcileProposedContent } from '../../edit/staging.js';
+import { resolveInWorkspace, WorkspaceEscapeError } from './pathGuard.js';
 
 export interface ProposeWriteArgs {
   path: string;
@@ -13,7 +13,15 @@ export async function executeProposeWrite(
   workspaceRoot: string,
   args: ProposeWriteArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const fullPath = path.resolve(workspaceRoot, args.path);
+  let fullPath: string;
+  try {
+    fullPath = resolveInWorkspace(workspaceRoot, args.path);
+  } catch (err) {
+    if (err instanceof WorkspaceEscapeError) {
+      return { content: [{ type: 'text', text: err.message }] };
+    }
+    throw err;
+  }
   let origContent = '';
   if (fs.existsSync(fullPath)) {
     origContent = fs.readFileSync(fullPath, 'utf8');

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { resolveInWorkspace, WorkspaceEscapeError } from './pathGuard.js';
 
 export interface ListDirArgs {
   relativePath?: string;
@@ -13,8 +14,16 @@ export async function executeListDir(
   args: ListDirArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   const targetRel = args.relativePath ?? '.';
-  const targetDir = path.resolve(workspaceRoot, targetRel);
   const maxDepth = args.maxDepth ?? 3;
+  let targetDir: string;
+  try {
+    targetDir = resolveInWorkspace(workspaceRoot, targetRel);
+  } catch (err) {
+    if (err instanceof WorkspaceEscapeError) {
+      return { content: [{ type: 'text', text: err.message }] };
+    }
+    throw err;
+  }
 
   if (!fs.existsSync(targetDir)) {
     return {
