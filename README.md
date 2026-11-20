@@ -16,6 +16,21 @@ Built from scratch for the TrueForge Forge-a-thon (Round 1). MIT licensed.
 | Write path | `propose_write` -> TrueForge approval -> hunk review -> `WorkspaceEdit` |
 | Test suite | 114 tests across 17 Vitest suites, `npm test` |
 
+## Demo
+
+- **Video:** [ForgePilot demo (4 min)](https://drive.google.com/file/d/1RLlnqAdQNODPK4owNfAOZgysbNhAXfoB/view?usp=drive_link)
+- **Screenshots:** full-size captures in [`docs/screenshots`](docs/screenshots)
+
+| Task A: inline edit with per-hunk review | Task B: agent run with MCP tool log |
+| --- | --- |
+| ![Task A inline edit diff](docs/screenshots/task-a-inline-diff.png) | ![Task B agent run](docs/screenshots/task-b-agent-run.png) |
+| **Task B: three files changed, tests passing** | **Task C: primary failed, fallback streaming** |
+| ![Task B applied](docs/screenshots/task-b-multi-file-applied.png) | ![Task C fallback](docs/screenshots/task-c-fallback.png) |
+
+The same turn inside TrueForge, showing the tool calls and approval prompts:
+
+![TrueForge session view](docs/screenshots/trueforge-session.png)
+
 ## What it does
 
 - **Agent mode.** A sidebar panel takes one prompt and lets the agent discover files and
@@ -273,7 +288,7 @@ FLASK_DEBUG=off python -c "from flask.helpers import get_debug_flag; print(get_d
 # False
 ```
 
-![Task A: inline edit diff review](docs/screenshots/task-a-inline-diff.png)
+The captured diff is the top-left screenshot in [Demo](#demo).
 
 ### Task B: agent mode
 
@@ -293,22 +308,14 @@ pytest tests/test_cli.py -q
 python -m flask --app <app> config
 ```
 
-![Task B: agent run with MCP tool log](docs/screenshots/task-b-agent-run.png)
-
-![Task B: three files changed and tests passing](docs/screenshots/task-b-multi-file-applied.png)
-
-The TrueForge session view shows the same turn: the tool calls, the approval prompts, and
-the final model response.
-
-![TrueForge session view](docs/screenshots/trueforge-session.png)
+The run, the applied multi-file diff, and the matching TrueForge session are in
+[Demo](#demo).
 
 ### Task C: fallback
 
 Break the primary model in TrueForge Settings (wrong base URL, revoked key, or an
 unloaded local model), then repeat Task A. The client retries with backoff, replays the
 prompt on the fallback model, and marks it in the panel. `git status` stays clean.
-
-![Task C: primary failed, fallback streaming](docs/screenshots/task-c-fallback.png)
 
 ## Running the tests
 
@@ -371,8 +378,7 @@ the regression tests in `test/security/`, and Antigravity for UI scaffolding.
 
 - Repository: [github.com/theRiddler9/Forge-a-thon](https://github.com/theRiddler9/Forge-a-thon)
 - Technical write-up: [docs/WRITEUP.pdf](docs/WRITEUP.pdf)
-- Demo video: recorded from this build, submitted with the entry (not committed here; the
-  file is about 49 MB)
+- Demo video: [ForgePilot demo (4 min)](https://drive.google.com/file/d/1RLlnqAdQNODPK4owNfAOZgysbNhAXfoB/view?usp=drive_link)
 
 ## License
 
