@@ -357,6 +357,10 @@ function appendPendingActionCard(toolName: string, args: any) {
 }
 
 function appendToolCard(name: string, args: any, isDestructive: boolean = false) {
+  if (name === 'propose_write') {
+    // Propose write is displayed exclusively via the dedicated proposal review card
+    return;
+  }
   if (isDestructive) {
     appendPendingActionCard(name, args);
     return;
@@ -385,7 +389,10 @@ function appendProposalReview(proposalId: string, filePath: string, hunks: any[]
         <span class="proposal-path">${escapeHtml(filePath)}</span>
         <span class="proposal-delta"><span class="delta-add">+${adds}</span> <span class="delta-del">−${dels}</span></span>
       </span>
-      <button class="open-diff-btn">Open Diff</button>
+      <div class="proposal-actions">
+        <button class="open-diff-btn">Open Diff</button>
+        <button class="accept-proposal-btn" title="Accept all hunks and save to disk">✓ Accept & Save</button>
+      </div>
     </div>
     <div class="hunk-list"></div>
     <div class="proposal-footer">
@@ -438,7 +445,7 @@ function appendProposalReview(proposalId: string, filePath: string, hunks: any[]
           <div class="hunk-reason">${escapeHtml(reason)}</div>
         </div>
         <div class="hunk-quick">
-          <button class="hunk-accept-btn" title="Accept this hunk"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 10"></polyline></svg></button>
+          <button class="hunk-accept-btn" title="Accept this hunk and apply to file"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 10"></polyline></svg></button>
           <button class="hunk-reject-btn" title="Reject this hunk"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
         </div>
       </div>`;
@@ -446,26 +453,36 @@ function appendProposalReview(proposalId: string, filePath: string, hunks: any[]
     const acceptBtn = row.querySelector('.hunk-accept-btn') as HTMLButtonElement;
     const rejectBtn = row.querySelector('.hunk-reject-btn') as HTMLButtonElement;
     acceptBtn.addEventListener('click', () => {
-      const current = decisions.get(hunk.id);
-      setDecision(hunk.id, current === 'accepted' ? null : 'accepted', row);
+      setDecision(hunk.id, 'accepted', row);
+      // Automatically apply when the user presses the tick button
+      vscode.postMessage({ type: 'proposalDecision', proposalId, decision: 'allow', toolCallId });
     });
     rejectBtn.addEventListener('click', () => {
-      const current = decisions.get(hunk.id);
-      setDecision(hunk.id, current === 'rejected' ? null : 'rejected', row);
+      setDecision(hunk.id, 'rejected', row);
+      if (hunks.length === 1) {
+        vscode.postMessage({ type: 'proposalDecision', proposalId, decision: 'deny', toolCallId });
+      }
     });
 
     hunkList.appendChild(row);
   }
 
+  card.querySelector('.accept-proposal-btn')?.addEventListener('click', () => {
+    for (let idx = 0; idx < hunks.length; idx++) {
+      const hunk = hunks[idx];
+      const rowEl = card.querySelector(`#hunk-${CSS.escape(hunk.id)}`) as HTMLElement;
+      setDecision(hunk.id, 'accepted', rowEl);
+    }
+    vscode.postMessage({ type: 'proposalDecision', proposalId, decision: 'allow', toolCallId });
+  });
+
   card.querySelector('.accept-all-btn')?.addEventListener('click', () => {
     for (let idx = 0; idx < hunks.length; idx++) {
       const hunk = hunks[idx];
       const rowEl = card.querySelector(`#hunk-${CSS.escape(hunk.id)}`) as HTMLElement;
-      if (decisions.get(hunk.id) !== 'accepted') {
-        setDecision(hunk.id, 'accepted', rowEl);
-      }
+      setDecision(hunk.id, 'accepted', rowEl);
     }
-    updateApplyButton();
+    vscode.postMessage({ type: 'proposalDecision', proposalId, decision: 'allow', toolCallId });
   });
 
   card.querySelector('.reject-all-btn')?.addEventListener('click', () => {
@@ -486,13 +503,21 @@ function appendProposalReview(proposalId: string, filePath: string, hunks: any[]
 
 function showProposalOutcome(proposalId: string, appliedCount: number, totalCount: number, filePath?: string) {
   const card = document.getElementById(`proposal-${proposalId}`);
-  const footer = card?.querySelector('.proposal-footer') as HTMLElement | null;
-  if (!card || !footer) return;
+  if (!card) return;
   card.classList.add('resolved');
   const applied = appliedCount > 0;
-  footer.innerHTML = applied
-    ? `<span class="proposal-outcome applied">✓ Applied ${appliedCount}/${totalCount} hunks to ${escapeHtml(filePath || '')}</span>`
-    : `<span class="proposal-outcome rejected">Proposal rejected — workspace unchanged</span>`;
+  const headerActions = card.querySelector('.proposal-actions') as HTMLElement | null;
+  if (headerActions) {
+    headerActions.innerHTML = applied
+      ? `<span class="proposal-outcome applied">✓ Saved</span>`
+      : `<span class="proposal-outcome rejected">✕ Rejected</span>`;
+  }
+  const footer = card.querySelector('.proposal-footer') as HTMLElement | null;
+  if (footer) {
+    footer.innerHTML = applied
+      ? `<span class="proposal-outcome applied">✓ Applied ${appliedCount}/${totalCount} hunks and saved to ${escapeHtml(filePath || '')}</span>`
+      : `<span class="proposal-outcome rejected">Proposal rejected — workspace unchanged</span>`;
+  }
 }
 
 function escapeHtml(str: string): string {

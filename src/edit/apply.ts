@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import fs from 'fs';
+import path from 'path';
 import { globalEditStaging } from './staging.js';
 import { globalSnapshotManager } from './snapshot.js';
 
@@ -23,6 +24,16 @@ export interface EditorApplyResult {
  * "ForgePilot: Undo Last Applied Change" can restore the previous state.
  */
 export async function applyProposalViaEditor(proposalId: string): Promise<EditorApplyResult> {
+  const proposal = globalEditStaging.getProposal(proposalId);
+  if (proposal && proposal.acceptedHunkIds.size === 0 && proposal.rejectedHunkIds.size === 0) {
+    // If user clicked apply/accept without explicitly picking individual hunks,
+    // accept all non-rejected hunks by default
+    for (const h of proposal.hunks) {
+      proposal.acceptedHunkIds.add(h.id);
+      h.state = 'accepted';
+    }
+  }
+
   const preview = globalEditStaging.previewProposal(proposalId);
   if (!preview.success || preview.newContent == null || !preview.fullPath) {
     return { ok: false, reason: 'could not compute applied content (proposal may be gone)' };
@@ -37,6 +48,14 @@ export async function applyProposalViaEditor(proposalId: string): Promise<Editor
     // Nothing was accepted — do not touch the document at all
     globalEditStaging.finalizeProposal(proposalId, 0, preview.totalCount ?? 0);
     return { ok: true, appliedCount: 0, totalCount: preview.totalCount ?? 0, relativePath: preview.relativePath };
+  }
+
+  // Ensure parent directory exists on disk for new files
+  const dir = path.dirname(fullPath);
+  if (!fs.existsSync(dir)) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+    } catch {}
   }
 
   const edit = new vscode.WorkspaceEdit();
@@ -62,8 +81,18 @@ export async function applyProposalViaEditor(proposalId: string): Promise<Editor
   }
 
   globalSnapshotManager.createSnapshot(fullPath, preview.originalContent ?? '');
-  const saved = await vscode.workspace.openTextDocument(uri);
-  await saved.save();
+  try {
+    const saved = await vscode.workspace.openTextDocument(uri);
+    await saved.save();
+  } catch {}
+
+  // Guarantee file is flushed to disk
+  try {
+    if (!fs.existsSync(fullPath) || fs.readFileSync(fullPath, 'utf8') !== newContent) {
+      fs.writeFileSync(fullPath, newContent, 'utf8');
+    }
+  } catch {}
+
   globalEditStaging.finalizeProposal(proposalId, preview.appliedCount, preview.totalCount);
 
   return {

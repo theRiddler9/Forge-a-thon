@@ -284,14 +284,6 @@ CRITICAL EDITING & SAFETY RULES:
             this.postMessage({ type: 'reasoningDelta', text });
           },
           onToolApprovalRequired: (toolCallId: string, toolName: string, args: any) => {
-            this.postMessage({
-              type: 'toolCall',
-              id: toolCallId,
-              name: toolName,
-              args,
-              isDestructive: true,
-            });
-
             if (toolName === 'propose_write') {
               const proposal = globalEditStaging.stageProposal(
                 this.workspaceRoot,
@@ -306,7 +298,16 @@ CRITICAL EDITING & SAFETY RULES:
                 filePath: proposal.relativePath,
                 hunks: proposal.hunks,
               });
+              return;
             }
+
+            this.postMessage({
+              type: 'toolCall',
+              id: toolCallId,
+              name: toolName,
+              args,
+              isDestructive: true,
+            });
           },
           onError: (err: Error) => {
             this.postMessage({ type: 'error', message: err.message });

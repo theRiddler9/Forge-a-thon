@@ -781,7 +781,9 @@ button {
   border: 1px solid rgba(210, 153, 34, 0.35);
   border-radius: 8px;
   overflow: hidden;
-  margin: 2px 0;
+  margin: 10px 0;
+  min-height: 48px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 .pending-tool-header {
@@ -810,7 +812,7 @@ button {
 
 .pending-tool-icon { color: var(--amber); display: flex; }
 .pending-tool-main { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.pending-tool-name { font-size: 11px; color: var(--fg-primary); font-family: var(--vscode-editor-font-family, monospace); }
+.pending-tool-name { font-size: 11px; color: var(--fg-primary); font-family: var(--vscode-editor-font-family, monospace); word-break: break-all; }
 .pending-tool-name code { color: #79b8ff; }
 .pending-tool-sub { font-size: 10px; color: var(--fg-secondary); }
 
@@ -832,18 +834,20 @@ button {
   border-left: 3px solid var(--amber);
   border-radius: 8px;
   overflow: hidden;
-  margin: 2px 0;
+  margin: 10px 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
-.proposal-review.resolved { opacity: 0.75; }
+.proposal-review.resolved { opacity: 0.85; border-left-color: #3fb950; }
 
 .proposal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 7px 10px;
+  padding: 8px 10px;
   background-color: rgba(255, 255, 255, 0.03);
   border-bottom: 1px solid var(--border);
+  gap: 8px;
 }
 
 .proposal-file { display: flex; align-items: center; gap: 7px; min-width: 0; color: var(--fg-secondary); }
@@ -861,17 +865,46 @@ button {
 .delta-add { color: var(--diff-add-fg); }
 .delta-del { color: var(--diff-del-fg); }
 
+.proposal-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 .open-diff-btn {
   background-color: var(--input-bg);
   border: 1px solid var(--border);
   color: var(--fg-primary);
   border-radius: 5px;
   font-size: 10.5px;
-  padding: 3px 10px;
+  padding: 3px 8px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .open-diff-btn:hover { border-color: var(--accent); color: #ffffff; }
+
+.accept-proposal-btn {
+  background-color: rgba(46, 160, 67, 0.22);
+  border: 1px solid rgba(46, 160, 67, 0.65);
+  color: #3fb950;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 3px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.accept-proposal-btn:hover {
+  background-color: #238636;
+  border-color: #2ea043;
+  color: #ffffff;
+}
 
 .hunk-list { display: flex; flex-direction: column; padding: 6px; gap: 4px; }
 
