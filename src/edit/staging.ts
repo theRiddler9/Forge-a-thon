@@ -36,10 +36,140 @@ export interface RecentApplyEntry {
   time: number;
 }
 
+export interface FinalizedProposalRecord {
+  proposalId: string;
+  relativePath: string;
+  fullPath: string;
+  appliedCount: number;
+  totalCount: number;
+  time: number;
+}
+
+/**
+ * Applies a list of targeted { search, replace } edits to existing file content.
+ */
+export function applyEditsToContent(
+  originalContent: string,
+  edits: Array<{ search: string; replace: string }>
+): string {
+  let content = originalContent;
+  for (const edit of edits) {
+    if (!edit || !edit.search) continue;
+    if (content.includes(edit.search)) {
+      content = content.replace(edit.search, edit.replace ?? '');
+    } else {
+      // Normalise CRLF vs LF and retry
+      const normContent = content.replace(/\r\n/g, '\n');
+      const normSearch = edit.search.replace(/\r\n/g, '\n');
+      const normReplace = (edit.replace ?? '').replace(/\r\n/g, '\n');
+      if (normContent.includes(normSearch)) {
+        content = normContent.replace(normSearch, normReplace);
+      }
+    }
+  }
+  return content;
+}
+
+/**
+ * Detects whether proposedContent is a truncated prefix, suffix, or snippet
+ * of originalContent (common when fast LLMs output only the lines around an edit)
+ * and reconciles it against the full original content to avoid accidental truncation.
+ */
+export function reconcileProposedContent(
+  originalContent: string,
+  proposedContent: string
+): string {
+  if (!originalContent || !proposedContent) return proposedContent;
+
+  const origLines = originalContent.split(/\r?\n/);
+  const propLines = proposedContent.split(/\r?\n/);
+
+  // If proposed content is already most of the file or original is small, no truncation occurred
+  if (origLines.length < 35 || propLines.length >= origLines.length * 0.75) {
+    return proposedContent;
+  }
+
+  const propNonEmpty = propLines
+    .map((l, i) => ({ line: l.trim(), idx: i }))
+    .filter((x) => x.line.length > 0);
+  if (propNonEmpty.length < 3) return proposedContent;
+
+  // Case A: Proposed content is a prefix snippet (starts at top, ends mid-file)
+  const last3 = propNonEmpty.slice(-3);
+  const lastAnchor = last3[last3.length - 1].line;
+
+  let bestOrigMatchIdx = -1;
+  let minDistance = Infinity;
+
+  for (let i = 0; i < origLines.length; i++) {
+    if (origLines[i].trim() === lastAnchor) {
+      let allMatch = true;
+      for (let j = 0; j < last3.length - 1; j++) {
+        const offset = last3.length - 1 - j;
+        const targetLine = i - offset;
+        if (targetLine < 0 || origLines[targetLine].trim() !== last3[j].line) {
+          allMatch = false;
+          break;
+        }
+      }
+      if (allMatch) {
+        const dist = Math.abs(i - propLines.length);
+        if (dist < minDistance) {
+          minDistance = dist;
+          bestOrigMatchIdx = i;
+        }
+      }
+    }
+  }
+
+  if (bestOrigMatchIdx !== -1 && bestOrigMatchIdx < origLines.length - 1) {
+    const firstAnchor = propNonEmpty[0].line;
+    const firstMatch = origLines.slice(0, 10).some((l) => l.trim() === firstAnchor);
+    if (firstMatch) {
+      const remainder = origLines.slice(bestOrigMatchIdx + 1);
+      const eol = originalContent.includes('\r\n') ? '\r\n' : '\n';
+      return proposedContent.replace(/\r?\n$/, '') + eol + remainder.join(eol);
+    }
+  }
+
+  // Case B: Proposed content is a suffix snippet (starts mid-file, ends at bottom)
+  const first3 = propNonEmpty.slice(0, 3);
+  const firstAnchor = first3[0].line;
+  let bestSuffixStartIdx = -1;
+  for (let i = 0; i < origLines.length; i++) {
+    if (origLines[i].trim() === firstAnchor) {
+      let allMatch = true;
+      for (let j = 1; j < first3.length; j++) {
+        if (i + j >= origLines.length || origLines[i + j].trim() !== first3[j].line) {
+          allMatch = false;
+          break;
+        }
+      }
+      if (allMatch) {
+        bestSuffixStartIdx = i;
+        break;
+      }
+    }
+  }
+
+  if (bestSuffixStartIdx > 10) {
+    const lastAnchor = propNonEmpty[propNonEmpty.length - 1].line;
+    const lastOrigAnchor = origLines.slice(-10).some((l) => l.trim() === lastAnchor);
+    if (lastOrigAnchor) {
+      const prefix = origLines.slice(0, bestSuffixStartIdx);
+      const eol = originalContent.includes('\r\n') ? '\r\n' : '\n';
+      return prefix.join(eol) + eol + proposedContent.replace(/^\r?\n/, '');
+    }
+  }
+
+  return proposedContent;
+}
+
 export class EditStagingManager {
   private proposals = new Map<string, StagedProposal>();
   private snapshotManager: SnapshotManager;
   private recentApplies: RecentApplyEntry[] = [];
+  private finalizedProposals = new Map<string, FinalizedProposalRecord>();
 
   constructor(snapshotManager: SnapshotManager = globalSnapshotManager) {
     this.snapshotManager = snapshotManager;
@@ -48,13 +178,21 @@ export class EditStagingManager {
   stageProposal(
     workspaceRoot: string,
     relativePath: string,
-    proposedContent: string,
-    toolCallId?: string
+    rawProposedContent: string,
+    toolCallId?: string,
+    edits?: Array<{ search: string; replace: string }>
   ): StagedProposal {
     const fullPath = path.resolve(workspaceRoot, relativePath);
     let originalContent = '';
     if (fs.existsSync(fullPath)) {
       originalContent = fs.readFileSync(fullPath, 'utf8');
+    }
+
+    let proposedContent = rawProposedContent;
+    if (Array.isArray(edits) && edits.length > 0 && originalContent) {
+      proposedContent = applyEditsToContent(originalContent, edits);
+    } else if (originalContent && proposedContent) {
+      proposedContent = reconcileProposedContent(originalContent, proposedContent);
     }
 
     const contentHash = hashRelPathContent(relativePath, proposedContent);
@@ -169,20 +307,40 @@ export class EditStagingManager {
    */
   finalizeProposal(proposalId: string, appliedCount?: number, totalCount?: number): void {
     const proposal = this.proposals.get(proposalId);
-    if (typeof appliedCount === 'number' && proposal) {
-      this.recentApplies.push({
-        path: proposal.fullPath,
+    if (proposal) {
+      const count = typeof appliedCount === 'number' ? appliedCount : proposal.acceptedHunkIds.size;
+      const total = totalCount ?? proposal.hunks.length;
+      this.finalizedProposals.set(proposalId, {
+        proposalId,
         relativePath: proposal.relativePath,
-        contentHash: proposal.contentHash,
-        appliedCount,
-        totalCount: totalCount ?? proposal.hunks.length,
+        fullPath: proposal.fullPath,
+        appliedCount: count,
+        totalCount: total,
         time: Date.now(),
       });
-      if (this.recentApplies.length > 20) {
-        this.recentApplies.shift();
+      if (typeof appliedCount === 'number') {
+        this.recentApplies.push({
+          path: proposal.fullPath,
+          relativePath: proposal.relativePath,
+          contentHash: proposal.contentHash,
+          appliedCount,
+          totalCount: total,
+          time: Date.now(),
+        });
+        if (this.recentApplies.length > 20) {
+          this.recentApplies.shift();
+        }
       }
     }
     this.proposals.delete(proposalId);
+  }
+
+  isFinalized(proposalId: string): boolean {
+    return this.finalizedProposals.has(proposalId);
+  }
+
+  getFinalizedRecord(proposalId: string): FinalizedProposalRecord | undefined {
+    return this.finalizedProposals.get(proposalId);
   }
 
   /**
@@ -244,6 +402,7 @@ export class EditStagingManager {
 
   clearAll(): void {
     this.proposals.clear();
+    this.finalizedProposals.clear();
   }
 }
 

@@ -452,14 +452,19 @@ function appendProposalReview(proposalId: string, filePath: string, hunks: any[]
 
     const acceptBtn = row.querySelector('.hunk-accept-btn') as HTMLButtonElement;
     const rejectBtn = row.querySelector('.hunk-reject-btn') as HTMLButtonElement;
-    acceptBtn.addEventListener('click', () => {
+    acceptBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       setDecision(hunk.id, 'accepted', row);
-      // Automatically apply when the user presses the tick button
+      lockProposalButtons(card);
+      showProposalOutcome(proposalId, 1, hunks.length, filePath);
       vscode.postMessage({ type: 'proposalDecision', proposalId, decision: 'allow', toolCallId });
     });
-    rejectBtn.addEventListener('click', () => {
+    rejectBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       setDecision(hunk.id, 'rejected', row);
       if (hunks.length === 1) {
+        lockProposalButtons(card);
+        showProposalOutcome(proposalId, 0, hunks.length, filePath);
         vscode.postMessage({ type: 'proposalDecision', proposalId, decision: 'deny', toolCallId });
       }
     });
@@ -467,29 +472,42 @@ function appendProposalReview(proposalId: string, filePath: string, hunks: any[]
     hunkList.appendChild(row);
   }
 
-  card.querySelector('.accept-proposal-btn')?.addEventListener('click', () => {
+  card.querySelector('.accept-proposal-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
     for (let idx = 0; idx < hunks.length; idx++) {
       const hunk = hunks[idx];
       const rowEl = card.querySelector(`#hunk-${CSS.escape(hunk.id)}`) as HTMLElement;
       setDecision(hunk.id, 'accepted', rowEl);
     }
+    lockProposalButtons(card);
+    showProposalOutcome(proposalId, hunks.length, hunks.length, filePath);
     vscode.postMessage({ type: 'proposalDecision', proposalId, decision: 'allow', toolCallId });
   });
 
-  card.querySelector('.accept-all-btn')?.addEventListener('click', () => {
+  card.querySelector('.accept-all-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
     for (let idx = 0; idx < hunks.length; idx++) {
       const hunk = hunks[idx];
       const rowEl = card.querySelector(`#hunk-${CSS.escape(hunk.id)}`) as HTMLElement;
       setDecision(hunk.id, 'accepted', rowEl);
     }
+    lockProposalButtons(card);
+    showProposalOutcome(proposalId, hunks.length, hunks.length, filePath);
     vscode.postMessage({ type: 'proposalDecision', proposalId, decision: 'allow', toolCallId });
   });
 
-  card.querySelector('.reject-all-btn')?.addEventListener('click', () => {
+  card.querySelector('.reject-all-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    lockProposalButtons(card);
+    showProposalOutcome(proposalId, 0, hunks.length, filePath);
     vscode.postMessage({ type: 'proposalDecision', proposalId, decision: 'deny', toolCallId });
   });
 
-  applyBtn.addEventListener('click', () => {
+  applyBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const count = Array.from(decisions.values()).filter((d) => d === 'accepted').length;
+    lockProposalButtons(card);
+    showProposalOutcome(proposalId, count, hunks.length, filePath);
     vscode.postMessage({ type: 'proposalDecision', proposalId, decision: 'allow', toolCallId });
   });
 
@@ -501,10 +519,19 @@ function appendProposalReview(proposalId: string, filePath: string, hunks: any[]
   chatLog.scrollTop = chatLog.scrollHeight;
 }
 
+function lockProposalButtons(card: HTMLElement) {
+  card.querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
+    b.disabled = true;
+    b.style.pointerEvents = 'none';
+    b.style.opacity = '0.45';
+  });
+}
+
 function showProposalOutcome(proposalId: string, appliedCount: number, totalCount: number, filePath?: string) {
   const card = document.getElementById(`proposal-${proposalId}`);
   if (!card) return;
   card.classList.add('resolved');
+  lockProposalButtons(card);
   const applied = appliedCount > 0;
   const headerActions = card.querySelector('.proposal-actions') as HTMLElement | null;
   if (headerActions) {

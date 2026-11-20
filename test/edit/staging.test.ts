@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import path from 'path';
 import fs from 'fs';
-import { EditStagingManager } from '../../src/edit/staging.js';
+import { EditStagingManager, applyEditsToContent, reconcileProposedContent } from '../../src/edit/staging.js';
 import { SnapshotManager } from '../../src/edit/snapshot.js';
 
 describe('EditStaging & SnapshotManager', () => {
@@ -64,5 +64,47 @@ describe('EditStaging & SnapshotManager', () => {
     staging.discardProposal(proposal.proposalId);
     expect(staging.getProposal(proposal.proposalId)).toBeUndefined();
     expect(fs.readFileSync(filePath, 'utf8')).toBe('initial content\nline 2\n');
+  });
+
+  it('applies search-and-replace edits accurately', () => {
+    const original = 'def foo():\n    return 42\n\ndef bar():\n    return "hello"\n';
+    const edits = [
+      { search: 'return 42', replace: 'return 100' },
+      { search: 'return "hello"', replace: 'return "world"' },
+    ];
+    const result = applyEditsToContent(original, edits);
+    expect(result).toBe('def foo():\n    return 100\n\ndef bar():\n    return "world"\n');
+  });
+
+  it('reconciles prefix snippet on large file to prevent truncation', () => {
+    // 50 lines original file
+    const origLines: string[] = [];
+    for (let i = 1; i <= 60; i++) {
+      origLines.push(`line_${i} = ${i}`);
+    }
+    const original = origLines.join('\n');
+
+    // Model only outputs lines 1 to 10 with a modification at line 3
+    const propLines = origLines.slice(0, 10);
+    propLines[2] = 'line_3 = 999';
+    const proposed = propLines.join('\n');
+
+    const reconciled = reconcileProposedContent(original, proposed);
+    const recLines = reconciled.split('\n');
+
+    expect(recLines.length).toBe(60);
+    expect(recLines[2]).toBe('line_3 = 999');
+    expect(recLines[59]).toBe('line_60 = 60');
+  });
+
+  it('tracks finalized proposals to ensure idempotent apply', () => {
+    const staging = new EditStagingManager();
+    const proposal = staging.stageProposal(testDir, 'target.py', 'new content\n');
+    expect(staging.isFinalized(proposal.proposalId)).toBe(false);
+
+    staging.finalizeProposal(proposal.proposalId, 1, 1);
+    expect(staging.isFinalized(proposal.proposalId)).toBe(true);
+    expect(staging.getProposal(proposal.proposalId)).toBeUndefined();
+    expect(staging.getFinalizedRecord(proposal.proposalId)?.appliedCount).toBe(1);
   });
 });

@@ -75,10 +75,14 @@ export function registerAllMcpTools(server: McpServer, workspaceRoot: string): v
   // propose_write (Approval-gated, destructive hint)
   server.tool(
     'propose_write',
-    'Propose an edit to a file. Edits are staged in memory and presented to the user for per-hunk review before touching disk.',
+    'Propose an edit to a file. For existing files, you can provide `edits` (list of {search, replace} snippets - RECOMMENDED for large files) or `newContent` (the full content). For new files, provide `newContent`.',
     {
       path: z.string().describe('Relative path of the file to modify or create'),
-      newContent: z.string().describe('Full proposed new content for the file'),
+      newContent: z.string().optional().describe('Proposed new content for the file'),
+      edits: z.array(z.object({
+        search: z.string().describe('Exact code snippet in the file to replace'),
+        replace: z.string().describe('New code to replace the search snippet with')
+      })).optional().describe('Targeted search-and-replace edits. Recommended when modifying existing files to avoid truncating them.'),
       proposalId: z.string().optional().describe('Internal proposal ID when executing approved changes'),
     },
     { destructiveHint: true },

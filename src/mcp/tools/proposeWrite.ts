@@ -1,8 +1,11 @@
-import { globalEditStaging } from '../../edit/staging.js';
+import fs from 'fs';
+import path from 'path';
+import { globalEditStaging, applyEditsToContent } from '../../edit/staging.js';
 
 export interface ProposeWriteArgs {
   path: string;
-  newContent: string;
+  newContent?: string;
+  edits?: Array<{ search: string; replace: string }>;
   proposalId?: string;
 }
 
@@ -10,10 +13,21 @@ export async function executeProposeWrite(
   workspaceRoot: string,
   args: ProposeWriteArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const fullPath = path.resolve(workspaceRoot, args.path);
+  let origContent = '';
+  if (fs.existsSync(fullPath)) {
+    origContent = fs.readFileSync(fullPath, 'utf8');
+  }
+
+  let finalContent = args.newContent ?? '';
+  if (Array.isArray(args.edits) && args.edits.length > 0 && origContent) {
+    finalContent = applyEditsToContent(origContent, args.edits);
+  }
+
   // If this exact edit was already applied by the approval flow (the user
   // clicked Apply and the extension wrote it), report that instead of
   // staging a duplicate proposal.
-  const recent = globalEditStaging.findRecentApply(args.path, args.newContent);
+  const recent = globalEditStaging.findRecentApply(args.path, finalContent);
   if (recent) {
     return {
       content: [
@@ -29,7 +43,9 @@ export async function executeProposeWrite(
   const proposal = globalEditStaging.stageProposal(
     workspaceRoot,
     args.path,
-    args.newContent
+    args.newContent ?? '',
+    undefined,
+    args.edits
   );
 
   return {

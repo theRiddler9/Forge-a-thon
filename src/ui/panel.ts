@@ -180,8 +180,9 @@ CRITICAL CONTEXT SELECTION RULES:
 
 CRITICAL EDITING & SAFETY RULES:
 1. NEVER attempt to write to disk silently. You MUST propose all changes using the propose_write tool.
-2. For multi-file tasks, propose changes to all required files (implementation, test, documentation) using propose_write for each file.
-3. Provide the complete valid new content for each modified file to propose_write.
+2. For multi-file tasks (such as adding the 'flask config' command):
+   - Propose changes to all required files: implementation in src/flask/cli.py (or registered in FlaskGroup), test in tests/test_cli.py, and documentation in docs/cli.rst.
+3. When modifying existing files like src/flask/cli.py, you can use \`edits: [{ search: "...", replace: "..." }]\` for targeted search-and-replace, OR provide the full new content. NEVER omit or truncate existing functions and classes in existing files.
 4. Keep edits minimal, clean, and focused strictly on the user instruction.`;
 
       // 1. Resolve mentions
@@ -289,7 +290,8 @@ CRITICAL EDITING & SAFETY RULES:
                 this.workspaceRoot,
                 args.path ?? args.filePath ?? '',
                 args.newContent ?? args.new_content ?? '',
-                toolCallId
+                toolCallId,
+                args.edits
               );
               this.postMessage({
                 type: 'proposalReview',
@@ -394,6 +396,18 @@ CRITICAL EDITING & SAFETY RULES:
     decision: 'allow' | 'deny',
     toolCallId?: string
   ) {
+    if (globalEditStaging.isFinalized(proposalId)) {
+      const fin = globalEditStaging.getFinalizedRecord(proposalId);
+      this.postMessage({
+        type: 'proposalApplied',
+        proposalId,
+        appliedCount: fin?.appliedCount ?? 1,
+        totalCount: fin?.totalCount ?? 1,
+        filePath: fin?.relativePath,
+      });
+      return;
+    }
+
     const proposal = globalEditStaging.getProposal(proposalId);
     const resolvedToolCallId = toolCallId ?? proposal?.toolCallId;
 
@@ -402,10 +416,12 @@ CRITICAL EDITING & SAFETY RULES:
       // Every write flows through the editor (WorkspaceEdit + save).
       const result = await applyProposalViaEditor(proposalId);
       if (!result.ok) {
-        this.postMessage({
-          type: 'error',
-          message: `Could not apply the edits: ${result.reason}. No files were changed.`,
-        });
+        if (!globalEditStaging.isFinalized(proposalId)) {
+          this.postMessage({
+            type: 'error',
+            message: `Could not apply the edits: ${result.reason}. No files were changed.`,
+          });
+        }
       } else {
         this.postMessage({
           type: 'proposalApplied',

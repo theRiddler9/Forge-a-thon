@@ -24,6 +24,19 @@ export interface EditorApplyResult {
  * "ForgePilot: Undo Last Applied Change" can restore the previous state.
  */
 export async function applyProposalViaEditor(proposalId: string): Promise<EditorApplyResult> {
+  // If this proposal was already applied (e.g. from a quick tick click or prior hunk decision),
+  // return success idempotently instead of reporting an error.
+  if (globalEditStaging.isFinalized(proposalId)) {
+    const record = globalEditStaging.getFinalizedRecord(proposalId);
+    return {
+      ok: true,
+      appliedCount: record?.appliedCount ?? 1,
+      totalCount: record?.totalCount ?? 1,
+      relativePath: record?.relativePath ?? '',
+      reason: 'Proposal already applied and saved.',
+    };
+  }
+
   const proposal = globalEditStaging.getProposal(proposalId);
   if (proposal && proposal.acceptedHunkIds.size === 0 && proposal.rejectedHunkIds.size === 0) {
     // If user clicked apply/accept without explicitly picking individual hunks,
