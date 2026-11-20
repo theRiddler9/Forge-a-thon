@@ -33,6 +33,7 @@ export class TrueForgeClient {
 
   setActiveModel(model: string): void {
     this.activeModel = model;
+    this.config.primaryModel = model;
     this.lastFallbackInfo = null;
   }
 
@@ -112,6 +113,7 @@ export class TrueForgeClient {
       }) || []).filter((m) => m.name);
       if (list.length > 0 && (!this.activeModel || !list.some((m) => m.name === this.activeModel))) {
         this.activeModel = list[0].name;
+        this.config.primaryModel = list[0].name;
       }
       return list;
     } catch (err: any) {
@@ -173,15 +175,16 @@ export class TrueForgeClient {
     const maxRetries = this.config.maxRetries ?? 3;
     let delay = this.config.retryDelayMs ?? 1000;
     this.lastFallbackInfo = null;
+    const targetModel = this.activeModel || this.config.primaryModel;
 
-    // Attempt primary model with backoff
+    // Attempt active/primary model with backoff
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const session = await this.createSession(this.config.primaryModel, instructions);
-        this.activeModel = this.config.primaryModel;
+        const session = await this.createSession(targetModel, instructions);
+        this.activeModel = targetModel;
         return session;
       } catch (err: any) {
-        console.warn(`Primary model attempt ${attempt} failed: ${err.message}`);
+        console.warn(`Model ${targetModel} attempt ${attempt} failed: ${err.message}`);
         if (attempt < maxRetries) {
           await new Promise((r) => setTimeout(r, delay));
           delay *= 2;
@@ -190,13 +193,13 @@ export class TrueForgeClient {
     }
 
     // Fallback to secondary model if configured
-    if (this.config.fallbackModel && this.config.fallbackModel !== this.config.primaryModel) {
+    if (this.config.fallbackModel && this.config.fallbackModel !== targetModel) {
       console.info(`Falling back to secondary model: ${this.config.fallbackModel}`);
       try {
         const session = await this.createSession(this.config.fallbackModel, instructions);
         this.activeModel = this.config.fallbackModel;
         this.lastFallbackInfo = {
-          from: this.config.primaryModel,
+          from: targetModel,
           to: this.config.fallbackModel,
           attempts: maxRetries,
           maxRetries,
@@ -204,12 +207,12 @@ export class TrueForgeClient {
         return session;
       } catch (fallbackErr: any) {
         throw new Error(
-          `Both primary model (${this.config.primaryModel}) and fallback model (${this.config.fallbackModel}) failed: ${fallbackErr.message}`
+          `Both primary model (${targetModel}) and fallback model (${this.config.fallbackModel}) failed: ${fallbackErr.message}`
         );
       }
     }
 
-    throw new Error(`Failed to create session with primary model: ${this.config.primaryModel}`);
+    throw new Error(`Failed to create session with model: ${targetModel}`);
   }
 
   async streamTurn(
