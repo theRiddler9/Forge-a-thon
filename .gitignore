@@ -40,3 +40,19 @@ Thumbs.db
 *.bak
 __pycache__/
 *.pyc
+
+# Local demo media and recording artifacts (not part of the extension)
+*.mp4
+/voiceover/*.mp3
+/screenshots/
+/scratch/frames/
+/scratch/sheet*.png
+
+# Local recording helpers (machine-specific, one contains a local OBS password)
+scripts/obs-control.mts
+scripts/extract_frames.py
+scripts/check-events.mts
+
+# Windows reserved-name artifact
+nul
+
