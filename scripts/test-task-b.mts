@@ -12,7 +12,7 @@ async function testTaskB() {
   console.log('\n=== RUNNING TASK B (MULTI-FILE AGENT MODE) ===\n');
 
   console.log('1. Starting MCP server on port 8795...');
-  const mcp = await startMcpServer(FLASK_WORKSPACE, 8795);
+  const mcp = await startMcpServer({ workspaceRoot: FLASK_WORKSPACE, port: 8795 });
 
   const client = new TrueForgeClient({
     baseUrl: 'http://localhost:8790',
