@@ -9,6 +9,7 @@ export interface TrueForgeClientConfig {
   primaryModel: string;
   fallbackModel?: string;
   mcpServerName?: string;
+  mcpServerUrl?: string;
   maxRetries?: number;
   retryDelayMs?: number;
 }

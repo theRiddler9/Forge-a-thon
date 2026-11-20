@@ -48,6 +48,10 @@ export class TrueForgeClient {
     return this.config.fallbackModel;
   }
 
+  setMcpServerUrl(url: string): void {
+    this.config.mcpServerUrl = url;
+  }
+
   hasFallback(): boolean {
     return (
       !!this.config.fallbackModel && this.config.fallbackModel !== this.config.primaryModel
@@ -139,6 +143,9 @@ export class TrueForgeClient {
 
   async createSession(modelName: string, instructions: string): Promise<any> {
     const mcpServerName = this.config.mcpServerName ?? 'forgepilot';
+    if (this.config.mcpServerUrl) {
+      await this.registerMcpServer(mcpServerName, this.config.mcpServerUrl).catch(() => {});
+    }
 
     const sessionPayload: any = {
       agent: {

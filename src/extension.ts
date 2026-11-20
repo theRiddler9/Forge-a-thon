@@ -23,11 +23,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
   globalContextBudget.setBudget(tokenBudget);
 
-  // 1. Start in-process MCP server
+  // 1. Start in-process MCP server (prefer stable port 8795, fallback to 0)
   try {
     mcpInstance = await startMcpServer({
       workspaceRoot,
-      port: 0,
+      port: 8795,
+    }).catch(async () => {
+      return startMcpServer({ workspaceRoot, port: 0 });
     });
     console.log(`ForgePilot MCP server running at ${mcpInstance.url}`);
   } catch (err: any) {
@@ -41,6 +43,7 @@ export async function activate(context: vscode.ExtensionContext) {
     primaryModel,
     fallbackModel,
     mcpServerName: 'forgepilot',
+    mcpServerUrl: mcpInstance.url,
   });
 
   // Query live TrueForge models
