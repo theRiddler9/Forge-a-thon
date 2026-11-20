@@ -1,6 +1,6 @@
 {
   "forgepilot.serverUrl": "http://localhost:8790",
-  "forgepilot.primaryModel": "groq/qwen-3-8-27b",
-  "forgepilot.fallbackModel": "groq/openai-gpt-oss-20b",
+  "forgepilot.primaryModel": "google-gemini/gemini-3-1-flash-lite",
+  "forgepilot.fallbackModel": "groq/qwen-3-8-27b",
   "forgepilot.tokenBudget": 30000
 }
