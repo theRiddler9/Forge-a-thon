@@ -38,3 +38,5 @@ coverage/
 Thumbs.db
 *.swp
 *.bak
+__pycache__/
+*.pyc
