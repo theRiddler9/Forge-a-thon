@@ -149,20 +149,24 @@ export class TrueForgeClient {
       await this.registerMcpServer(mcpServerName, this.config.mcpServerUrl).catch(() => {});
     }
 
+    const mcpConfig = {
+      name: mcpServerName,
+      enable_tools: ['@all'],
+      enableTools: ['@all'],
+      require_approval_for_tools: ['@destructive', '@write', 'propose_write', 'run_command'],
+      requireApprovalForTools: ['@destructive', '@write', 'propose_write', 'run_command'],
+      preload: false,
+      preload_tools: ['list_dir', 'read_file', 'search_text', 'find_symbol', 'get_context_budget_info', 'propose_write'],
+      preloadTools: ['list_dir', 'read_file', 'search_text', 'find_symbol', 'get_context_budget_info', 'propose_write'],
+    };
+
     const sessionPayload: any = {
       agent: {
         spec: {
           model: { name: modelName },
           instructions,
-          mcpServers: [
-            {
-              name: mcpServerName,
-              enableTools: ['@all'],
-              requireApprovalForTools: ['@destructive', '@write', 'propose_write', 'run_command'],
-              preload: false,
-              preloadTools: ['list_dir', 'read_file', 'search_text', 'find_symbol', 'get_context_budget_info', 'propose_write'],
-            },
-          ],
+          mcp_servers: [mcpConfig],
+          mcpServers: [mcpConfig],
         },
       },
     };
