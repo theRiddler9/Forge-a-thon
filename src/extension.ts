@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import crypto from 'crypto';
 import { startMcpServer } from './mcp/server.js';
 import { McpServerInstance } from './mcp/types.js';
 import { TrueForgeClient } from './trueforge/client.js';
@@ -23,13 +24,17 @@ export async function activate(context: vscode.ExtensionContext) {
 
   globalContextBudget.setBudget(tokenBudget);
 
-  // 1. Start in-process MCP server (prefer stable port 8795, fallback to 0)
+  // 1. Start in-process MCP server (prefer stable port 8795, fallback to 0).
+  // A per-activation token gates the SSE handshake so random local processes
+  // and browser pages cannot reach run_command/propose_write directly.
+  const mcpAuthToken = crypto.randomBytes(24).toString('base64url');
   try {
     mcpInstance = await startMcpServer({
       workspaceRoot,
       port: 8795,
+      authToken: mcpAuthToken,
     }).catch(async () => {
-      return startMcpServer({ workspaceRoot, port: 0 });
+      return startMcpServer({ workspaceRoot, port: 0, authToken: mcpAuthToken });
     });
     console.log(`ForgePilot MCP server running at ${mcpInstance.url}`);
   } catch (err: any) {

@@ -18,13 +18,15 @@ export async function startMcpServer(options: McpServerOptions = {}): Promise<Mc
   const name = options.name ?? 'forgepilot';
   const version = options.version ?? '0.1.0';
   const workspaceRoot = options.workspaceRoot ?? process.cwd();
+  const authToken = options.authToken;
 
   const baselineServer = createConfiguredMcpServer(name, version, workspaceRoot);
   const activeTransports = new Map<string, SSEServerTransport>();
   const activeServers = new Map<string, McpServer>();
 
   const httpServer = http.createServer(async (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    // No wildcard CORS: this server can execute commands, so browser origins
+    // must never be able to reach it. MCP clients are not browsers.
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
@@ -38,6 +40,11 @@ export async function startMcpServer(options: McpServerOptions = {}): Promise<Mc
     const url = new URL(req.url ?? '/', `http://${hostHeader}`);
 
     if (req.method === 'GET' && url.pathname === '/sse') {
+      if (authToken && url.searchParams.get('token') !== authToken) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Unauthorized: invalid or missing token' }));
+        return;
+      }
       const transport = new SSEServerTransport('/messages', res);
       const sessionId = transport.sessionId;
       activeTransports.set(sessionId, transport);
@@ -79,7 +86,9 @@ export async function startMcpServer(options: McpServerOptions = {}): Promise<Mc
 
   const address = httpServer.address() as any;
   const actualPort = address.port;
-  const actualUrl = `http://${host}:${actualPort}/sse`;
+  const actualUrl = authToken
+    ? `http://${host}:${actualPort}/sse?token=${encodeURIComponent(authToken)}`
+    : `http://${host}:${actualPort}/sse`;
 
   return {
     port: actualPort,

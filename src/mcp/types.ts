@@ -6,6 +6,12 @@ export interface McpServerOptions {
   name?: string;
   version?: string;
   workspaceRoot?: string;
+  /**
+   * When set, the SSE handshake (GET /sse) requires `?token=<authToken>`.
+   * The /messages endpoint stays gated by the unguessable per-connection
+   * sessionId issued over the authenticated stream.
+   */
+  authToken?: string;
 }
 
 export interface McpServerInstance {
