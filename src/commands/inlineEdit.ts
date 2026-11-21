@@ -5,6 +5,7 @@ import { globalEditStaging } from '../edit/staging.js';
 import { applyProposalViaEditor } from '../edit/apply.js';
 import { globalHunkCodeLensProvider } from '../edit/codelens.js';
 import { INLINE_EDIT_INSTRUCTIONS, buildInlineEditPrompt } from '../agent/instructions.js';
+import { globalContextBudget } from '../mcp/tools/contextBudget.js';
 
 export function registerInlineEditCommand(
   context: vscode.ExtensionContext,
@@ -50,6 +51,7 @@ export function registerInlineEditCommand(
           });
 
           const INSTRUCTIONS = INLINE_EDIT_INSTRUCTIONS;
+          globalContextBudget.reset();
           const session = await client.createSessionWithFallback(INSTRUCTIONS);
           let activeSessionId = session.id;
 

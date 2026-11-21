@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { resolveInWorkspace, WorkspaceEscapeError } from './pathGuard.js';
+import { globalContextBudget } from './contextBudget.js';
 
 export interface ListDirArgs {
   relativePath?: string;
@@ -66,7 +67,10 @@ export async function executeListDir(
 
   walk(targetDir, 1);
 
+  const outputText = lines.length > 0 ? lines.join('\n') : '(empty directory)';
+  const finalText = globalContextBudget.enforceOutput(outputText, `list_dir:${targetRel}`, 'Directory listing');
+
   return {
-    content: [{ type: 'text', text: lines.length > 0 ? lines.join('\n') : '(empty directory)' }],
+    content: [{ type: 'text', text: finalText }],
   };
 }

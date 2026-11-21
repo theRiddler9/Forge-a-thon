@@ -85,10 +85,9 @@ export async function executeFindSymbol(
   walk(workspaceRoot);
 
   const outputText = matches.length > 0 ? matches.join('\n---\n') : `Symbol "${symbolName}" not found in workspace.`;
-  const estimatedTokens = Math.ceil(outputText.length / 4);
-  globalContextBudget.recordTokens(`find_symbol:${symbolName}`, estimatedTokens, `Symbol search`);
+  const finalText = globalContextBudget.enforceOutput(outputText, `find_symbol:${symbolName}`, `Symbol search`);
 
   return {
-    content: [{ type: 'text', text: outputText }],
+    content: [{ type: 'text', text: finalText }],
   };
 }

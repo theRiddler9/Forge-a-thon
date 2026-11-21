@@ -169,6 +169,9 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
 
   private async _handleUserMessage(userInput: string) {
     try {
+      // The context budget is per-turn: reset so a long session cannot
+      // permanently exhaust it.
+      globalContextBudget.reset();
       const INSTRUCTIONS = AGENT_INSTRUCTIONS;
 
       // 1. Resolve mentions

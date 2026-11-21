@@ -61,11 +61,9 @@ export async function executeReadFile(
     outputText += `\n[... ${remaining} more lines truncated. Specify startLine and endLine to read more ...]`;
   }
 
-  // Estimate tokens (~4 characters per token)
-  const estimatedTokens = Math.ceil(outputText.length / 4);
-  globalContextBudget.recordTokens(relPath, estimatedTokens, `Read lines ${start}-${end}`);
+  const finalText = globalContextBudget.enforceOutput(outputText, relPath, `Read lines ${start}-${end}`);
 
   return {
-    content: [{ type: 'text', text: outputText }],
+    content: [{ type: 'text', text: finalText }],
   };
 }

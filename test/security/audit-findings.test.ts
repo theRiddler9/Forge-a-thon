@@ -91,15 +91,32 @@ describe('Audit finding: search_text glob handling', () => {
 });
 
 describe('Audit finding: context budget is advisory only', () => {
-  it.fails('recording beyond the budget is rejected or flagged', () => {
-    // KNOWN ISSUE: ContextBudgetTracker only accumulates; nothing enforces
-    // totalBudget, and usage persists across turns (reset is manual).
+  it('recording beyond the budget is clamped and flagged', () => {
+    // recordTokens clamps usedTokens at totalBudget and tracks the overflow
+    // so get_context_budget_info can report overBudget/exceededTokens.
     const tracker = new ContextBudgetTracker(100);
     tracker.recordTokens('a.py', 80);
     tracker.recordTokens('b.py', 80); // 160 > 100 budget
     const info = tracker.getBudgetInfo();
-    // Safe behaviour would clamp/reject the second record or expose an
-    // overBudget flag the tools can act on.
     expect(info.usedTokens).toBeLessThanOrEqual(info.totalBudget);
+    expect(info.overBudget).toBe(true);
+    expect(info.exceededTokens).toBe(60);
+  });
+
+  it('enforceOutput truncates tool output at the remaining budget', () => {
+    const tracker = new ContextBudgetTracker(100);
+    tracker.recordTokens('a.py', 90); // 10 tokens left = 40 chars
+    const big = 'x'.repeat(400);
+    const out = tracker.enforceOutput(big, 'read', 'test');
+    expect(out).toContain('truncated');
+    expect(out.length).toBeLessThan(big.length);
+    expect(tracker.getBudgetInfo().usedTokens).toBe(100);
+  });
+
+  it('enforceOutput refuses new reads once the budget is exhausted', () => {
+    const tracker = new ContextBudgetTracker(10);
+    tracker.recordTokens('a.py', 20);
+    const out = tracker.enforceOutput('some content', 'read', 'test');
+    expect(out).toContain('budget exhausted');
   });
 });

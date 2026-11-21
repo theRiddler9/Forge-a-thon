@@ -78,10 +78,9 @@ export async function executeSearchText(
   walk(workspaceRoot);
 
   const outputText = results.length > 0 ? results.join('\n---\n') : `No matches found for query "${query}".`;
-  const estimatedTokens = Math.ceil(outputText.length / 4);
-  globalContextBudget.recordTokens('search_text', estimatedTokens, `Search "${query}"`);
+  const finalText = globalContextBudget.enforceOutput(outputText, 'search_text', `Search "${query}"`);
 
   return {
-    content: [{ type: 'text', text: outputText }],
+    content: [{ type: 'text', text: finalText }],
   };
 }
