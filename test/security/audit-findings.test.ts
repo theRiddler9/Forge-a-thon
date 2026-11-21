@@ -6,6 +6,7 @@ import { SnapshotManager } from '../../src/edit/snapshot.js';
 import { computeHunks, applyHunks } from '../../src/edit/hunks.js';
 import { executeSearchText } from '../../src/mcp/tools/searchText.js';
 import { ContextBudgetTracker } from '../../src/mcp/tools/contextBudget.js';
+import { resolveInWorkspace } from '../../src/mcp/tools/pathGuard.js';
 
 /**
  * Regression tests for issues found in the security/correctness audit.
@@ -125,5 +126,14 @@ describe('Audit finding: context budget is advisory only', () => {
     tracker.recordTokens('a.py', 20);
     const out = tracker.enforceOutput('some content', 'read', 'test');
     expect(out).toContain('budget exhausted');
+  });
+});
+
+describe('Audit finding: _openFile path guard', () => {
+  it('resolveInWorkspace blocks ../.. traversal from openFile path', () => {
+    const ws = path.resolve('/mock/workspace');
+    expect(() => resolveInWorkspace(ws, '../etc/passwd')).toThrow();
+    expect(() => resolveInWorkspace(ws, '..\\etc\\passwd')).toThrow();
+    expect(() => resolveInWorkspace(ws, 'subdir/../../secret.txt')).toThrow();
   });
 });

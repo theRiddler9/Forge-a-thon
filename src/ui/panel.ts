@@ -6,6 +6,7 @@ import { globalEditStaging } from '../edit/staging.js';
 import { applyProposalViaEditor } from '../edit/apply.js';
 import { parseMentions, resolveMentions, formatContextBlock } from '../context/mentions.js';
 import { globalContextBudget } from '../mcp/tools/contextBudget.js';
+import { resolveInWorkspace } from '../mcp/tools/pathGuard.js';
 import { AGENT_INSTRUCTIONS } from '../agent/instructions.js';
 
 function extractToolResponseText(event: any): string {
@@ -542,8 +543,14 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
   }
 
   private async _openFile(relativePath: string, line?: number) {
+    let fullPath: string;
     try {
-      const fullPath = path.resolve(this.workspaceRoot, relativePath);
+      fullPath = resolveInWorkspace(this.workspaceRoot, relativePath);
+    } catch {
+      this.postMessage({ type: 'error', message: `Cannot open path outside workspace: ${relativePath}` });
+      return;
+    }
+    try {
       const uri = vscode.Uri.file(fullPath);
       const doc = await vscode.workspace.openTextDocument(uri);
       const editor = await vscode.window.showTextDocument(doc, { preview: true });
