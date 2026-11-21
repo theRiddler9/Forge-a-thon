@@ -6,6 +6,7 @@ import { globalEditStaging } from '../edit/staging.js';
 import { applyProposalViaEditor } from '../edit/apply.js';
 import { parseMentions, resolveMentions, formatContextBlock } from '../context/mentions.js';
 import { globalContextBudget } from '../mcp/tools/contextBudget.js';
+import { AGENT_INSTRUCTIONS } from '../agent/instructions.js';
 
 function extractToolResponseText(event: any): string {
   if (!event) return '';
@@ -168,22 +169,7 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
 
   private async _handleUserMessage(userInput: string) {
     try {
-      const INSTRUCTIONS =
-        `You are ForgePilot, a careful and highly disciplined coding assistant operating inside VS Code via TrueForge and localhost MCP tools.
-
-CRITICAL CONTEXT SELECTION RULES:
-1. Never dump whole files into context. Always search first with list_dir, search_text, or find_symbol.
-2. When reading code, use read_file with targeted startLine and endLine ranges (max 400 lines).
-3. BEFORE proposing any file edits, output a structured 'Context chosen' summary list:
-   Context chosen:
-   - <file_path>: <one-line explanation of why this file/symbol was chosen>
-
-CRITICAL EDITING & SAFETY RULES:
-1. NEVER attempt to write to disk silently. You MUST propose all changes using the propose_write tool.
-2. For multi-file tasks (such as adding the 'flask config' command):
-   - Propose changes to all required files: implementation in src/flask/cli.py (or registered in FlaskGroup), test in tests/test_cli.py, and documentation in docs/cli.rst.
-3. When modifying existing files like src/flask/cli.py, you can use \`edits: [{ search: "...", replace: "..." }]\` for targeted search-and-replace, OR provide the full new content. NEVER omit or truncate existing functions and classes in existing files.
-4. Keep edits minimal, clean, and focused strictly on the user instruction.`;
+      const INSTRUCTIONS = AGENT_INSTRUCTIONS;
 
       // 1. Resolve mentions
       const parsed = parseMentions(userInput);
@@ -291,7 +277,8 @@ CRITICAL EDITING & SAFETY RULES:
                 args.path ?? args.filePath ?? '',
                 args.newContent ?? args.new_content ?? '',
                 toolCallId,
-                args.edits
+                args.edits,
+                args.rationale ?? args.rationaleText
               );
               this.postMessage({
                 type: 'proposalReview',
@@ -299,6 +286,7 @@ CRITICAL EDITING & SAFETY RULES:
                 toolCallId,
                 filePath: proposal.relativePath,
                 hunks: proposal.hunks,
+                rationale: proposal.rationale,
               });
               return;
             }

@@ -4,6 +4,7 @@ import { TrueForgeClient } from '../trueforge/client.js';
 import { globalEditStaging } from '../edit/staging.js';
 import { applyProposalViaEditor } from '../edit/apply.js';
 import { globalHunkCodeLensProvider } from '../edit/codelens.js';
+import { INLINE_EDIT_INSTRUCTIONS, buildInlineEditPrompt } from '../agent/instructions.js';
 
 export function registerInlineEditCommand(
   context: vscode.ExtensionContext,
@@ -40,16 +41,15 @@ export function registerInlineEditCommand(
       async (_progress, token) => {
         try {
           const fullDocText = editor.document.getText();
-          const inlinePrompt = [
-            `File: ${filePath}`,
-            `Lines: ${startLine}-${endLine}`,
-            `Selected Code:\n\`\`\`\n${selectedText}\n\`\`\``,
-            `Instruction: ${instruction}`,
-            `CRITICAL: Edit only the selected code or function according to the instruction. Call propose_write once with the modified code or full file.`,
-          ].join('\n\n');
+          const inlinePrompt = buildInlineEditPrompt({
+            filePath,
+            startLine,
+            endLine,
+            selectedText,
+            instruction,
+          });
 
-          const INSTRUCTIONS =
-            'You are an inline code editing agent. Respond strictly by calling propose_write once with the modified content.';
+          const INSTRUCTIONS = INLINE_EDIT_INSTRUCTIONS;
           const session = await client.createSessionWithFallback(INSTRUCTIONS);
           let activeSessionId = session.id;
 
@@ -87,7 +87,8 @@ export function registerInlineEditCommand(
                 targetPath,
                 fullNewContent,
                 toolCallId,
-                edits
+                edits,
+                args.rationale ?? args.rationaleText
               );
 
               globalHunkCodeLensProvider.refresh();
@@ -109,8 +110,9 @@ export function registerInlineEditCommand(
               }
 
               // Show persistent modal action dialog to user (does not auto-dismiss)
+              const rationaleText = proposal.rationale ? `\n\nWhy: ${proposal.rationale}` : '';
               const choice = await vscode.window.showInformationMessage(
-                `ForgePilot proposed ${proposal.hunks.length} hunk(s) for ${filePath}.`,
+                `ForgePilot proposed ${proposal.hunks.length} hunk(s) for ${filePath}.${rationaleText}`,
                 { modal: true },
                 'Accept All',
                 'Reject All'
