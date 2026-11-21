@@ -80,7 +80,7 @@ describe('Audit finding: search_text glob handling', () => {
     try { fs.rmSync(ws, { recursive: true, force: true }); } catch {}
   });
 
-  it.fails('glob "*.py" does not match ".pyc" files', async () => {
+  it('glob "*.py" does not match ".pyc" files', async () => {
     // KNOWN BUG: glob is a basename substring match after stripping '*',
     // so '*.py' -> '.py' also matches 'notes.pyc'.
     const res = await executeSearchText(ws, { query: 'needle', glob: '*.py' });
@@ -88,7 +88,7 @@ describe('Audit finding: search_text glob handling', () => {
     expect(text).not.toContain('notes.pyc');
   });
 
-  it.fails('path-qualified glob "src/*.py" matches files under src/', async () => {
+  it('path-qualified glob "src/*.py" matches files under src/', async () => {
     // KNOWN BUG: 'src/*.py' -> 'src/.py' is tested against the BASENAME only,
     // so it can never match.
     const res = await executeSearchText(ws, { query: 'needle', glob: 'src/*.py' });
