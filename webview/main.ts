@@ -369,7 +369,7 @@ function appendToolCard(name: string, args: any, isDestructive: boolean = false)
 }
 
 // ===== Figma proposal review card (per-hunk accept/reject) =====
-function appendProposalReview(proposalId: string, filePath: string, hunks: any[], toolCallId?: string) {
+function appendProposalReview(proposalId: string, filePath: string, hunks: any[], toolCallId?: string, rationale?: string) {
   const card = document.createElement('div');
   card.className = 'proposal-review';
   card.id = `proposal-${proposalId}`;
@@ -394,6 +394,7 @@ function appendProposalReview(proposalId: string, filePath: string, hunks: any[]
         <button class="accept-proposal-btn" title="Accept all hunks and save to disk">✓ Accept & Save</button>
       </div>
     </div>
+    ${rationale ? `<div class="proposal-rationale"><span class="rationale-label">Why:</span> ${escapeHtml(rationale)}</div>` : ''}
     <div class="hunk-list"></div>
     <div class="proposal-footer">
       <button class="reject-all-btn">Reject All</button>
@@ -802,7 +803,7 @@ window.addEventListener('message', (event) => {
       break;
 
     case 'proposalReview':
-      appendProposalReview(msg.proposalId, msg.filePath, msg.hunks, msg.toolCallId);
+      appendProposalReview(msg.proposalId, msg.filePath, msg.hunks, msg.toolCallId, msg.rationale);
       break;
 
     case 'proposalApplied':
