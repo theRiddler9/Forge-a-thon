@@ -8,16 +8,22 @@ export interface FindSymbolArgs {
 
 const IGNORED_DIRS = new Set(['.git', 'node_modules', 'dist', 'out', '__pycache__', '.pytest_cache', '.venv']);
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // Regex patterns for symbol definitions in Python, TypeScript/JavaScript, etc.
+// The symbol name is always escaped: it is user/agent input and must be matched
+// literally, never interpreted as a regex.
 const SYMBOL_PATTERNS = [
   // Python: def foo / class Foo
-  (name: string) => new RegExp(`^[ \\t]*(?:async\\s+)?def\\s+(${name})\\b`, 'i'),
-  (name: string) => new RegExp(`^[ \\t]*class\\s+(${name})\\b`, 'i'),
+  (name: string) => new RegExp(`^[ \\t]*(?:async\\s+)?def\\s+(${escapeRegExp(name)})\\b`, 'i'),
+  (name: string) => new RegExp(`^[ \\t]*class\\s+(${escapeRegExp(name)})\\b`, 'i'),
   // JS/TS: function foo / class Foo / const foo = / interface Foo
-  (name: string) => new RegExp(`^[ \\t]*(?:export\\s+)?(?:async\\s+)?function\\s+(${name})\\b`, 'i'),
-  (name: string) => new RegExp(`^[ \\t]*(?:export\\s+)?class\\s+(${name})\\b`, 'i'),
-  (name: string) => new RegExp(`^[ \\t]*(?:export\\s+)?interface\\s+(${name})\\b`, 'i'),
-  (name: string) => new RegExp(`^[ \\t]*(?:export\\s+)?(?:const|let|var)\\s+(${name})\\s*=`, 'i'),
+  (name: string) => new RegExp(`^[ \\t]*(?:export\\s+)?(?:async\\s+)?function\\s+(${escapeRegExp(name)})\\b`, 'i'),
+  (name: string) => new RegExp(`^[ \\t]*(?:export\\s+)?class\\s+(${escapeRegExp(name)})\\b`, 'i'),
+  (name: string) => new RegExp(`^[ \\t]*(?:export\\s+)?interface\\s+(${escapeRegExp(name)})\\b`, 'i'),
+  (name: string) => new RegExp(`^[ \\t]*(?:export\\s+)?(?:const|let|var)\\s+(${escapeRegExp(name)})\\s*=`, 'i'),
 ];
 
 export async function executeFindSymbol(

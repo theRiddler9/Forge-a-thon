@@ -81,27 +81,20 @@ describe('MCP tool input validation', () => {
   });
 
   describe('find_symbol — regex injection', () => {
-    // The tool interpolates `name` directly into a RegExp. Names containing
-    // regex metacharacters must not crash the tool or produce nonsense.
-    // Names that produce INVALID regexes — the tool currently throws
-    // SyntaxError instead of returning an error string (confirmed bug).
-    const invalidRegexNames = ['alpha(', '[', '\\', 'a{2,1}'];
-    for (const name of invalidRegexNames) {
-      it.fails(`does not crash on invalid-regex symbol name "${name}"`, async () => {
+    // The tool escapes `name` before interpolating into a RegExp, so hostile
+    // names are matched literally and can never crash or act as patterns.
+    const hostileNames = ['alpha(', '[', '\\', 'a{2,1}', 'a.*', 'alpha|beta'];
+    for (const name of hostileNames) {
+      it(`treats "${name}" literally without crashing`, async () => {
         const res = await executeFindSymbol(ws, { name });
         expect(res.content[0].text).toBeDefined();
       });
     }
 
-    // Names that are valid regexes but change matching semantics — must not
-    // crash; over-matching is a quality issue, not a safety one.
-    const validButDangerous = ['a.*', 'alpha|beta'];
-    for (const name of validButDangerous) {
-      it(`survives valid-regex symbol name "${name}"`, async () => {
-        const res = await executeFindSymbol(ws, { name });
-        expect(res.content[0].text).toBeDefined();
-      });
-    }
+    it('does not regex-match: "a.*" must not find symbol "alpha"', async () => {
+      const res = await executeFindSymbol(ws, { name: 'a.*' });
+      expect(res.content[0].text).not.toContain('def alpha');
+    });
 
     it('finds a normal symbol (control)', async () => {
       const res = await executeFindSymbol(ws, { name: 'alpha' });
