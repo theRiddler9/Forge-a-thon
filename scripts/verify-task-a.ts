@@ -16,7 +16,9 @@ export function verifyTaskA(flaskWorkspacePath: string): { success: boolean; det
   const content = fs.readFileSync(helpersPath, 'utf8');
 
   // 1. Check docstring updates
-  if (!content.includes("'off'") || !content.includes("'n'")) {
+  const hasOff = content.includes("'off'") || content.includes('"off"');
+  const hasN = content.includes("'n'") || content.includes('"n"');
+  if (!hasOff || !hasN) {
     details.push("Docstring or code does not explicitly mention 'off' and 'n'");
   } else {
     details.push("✓ Code/Docstring contains 'off' and 'n'");

@@ -181,7 +181,7 @@ def test_config_command(runner, app):
     console.log('\nRunning pytest tests/test_cli.py -k test_config_command...');
     try {
       const pyTestOut = execSync(
-        `"${PYTHON_BIN}" -m pytest tests/test_cli.py -k test_config_command -q`,
+        `"${PYTHON_BIN}" -m pytest tests/test_cli.py -k test_config_command -p no:cacheprovider -q`,
         { cwd: FLASK_WORKSPACE, encoding: 'utf8' }
       ).trim();
       console.log(`✓ Pytest output: ${pyTestOut}`);

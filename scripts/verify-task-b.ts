@@ -32,7 +32,7 @@ export function verifyTaskB(flaskWorkspacePath: string): { success: boolean; det
     : 'python';
 
   try {
-    const pytestOut = execSync(`"${pythonBin}" -m pytest tests/test_cli.py -q`, {
+    const pytestOut = execSync(`"${pythonBin}" -m pytest tests/test_cli.py -q -p no:cacheprovider`, {
       cwd: flaskWorkspacePath,
       encoding: 'utf8',
     });

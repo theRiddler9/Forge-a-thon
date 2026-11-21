@@ -1,17 +1,32 @@
 import { execSync } from 'child_process';
 import { TrueForgeClient } from '../src/trueforge/client.js';
+import { startMcpServer } from '../src/mcp/server.js';
 
 export async function verifyTaskC(flaskWorkspacePath?: string): Promise<{ success: boolean; details: string[] }> {
   const details: string[] = [];
+  const workspaceRoot = flaskWorkspacePath ?? process.cwd();
 
-  // 1. Initialize client with a broken primary model and working fallback model
-  const client = new TrueForgeClient({
-    baseUrl: 'http://localhost:8790',
-    primaryModel: 'invalid-provider/unreachable-primary-model',
-    fallbackModel: 'groq/qwen-3-8-27b',
-    maxRetries: 3,
-    retryDelayMs: 300,
-  });
+  // 0. Start in-process MCP server so TrueForge agent session can connect to tools
+  let mcpServer: any;
+  try {
+    mcpServer = await startMcpServer({ workspaceRoot, port: 8795 }).catch(async () => {
+      return startMcpServer({ workspaceRoot, port: 0 });
+    });
+  } catch (err: any) {
+    details.push(`⚠ Notice: MCP server startup on port 8795: ${err.message}`);
+  }
+
+  try {
+    // 1. Initialize client with a broken primary model and working fallback model
+    const client = new TrueForgeClient({
+      baseUrl: 'http://localhost:8790',
+      primaryModel: 'invalid-provider/unreachable-primary-model',
+      fallbackModel: 'groq/qwen-3-8-27b',
+      mcpServerName: 'forgepilot',
+      mcpServerUrl: mcpServer?.url ?? 'http://127.0.0.1:8795/sse',
+      maxRetries: 3,
+      retryDelayMs: 300,
+    });
 
   details.push('1. Configured primaryModel="invalid-provider/unreachable-primary-model"');
   details.push('2. Configured fallbackModel="groq/qwen-3-8-27b"');
@@ -72,6 +87,11 @@ export async function verifyTaskC(flaskWorkspacePath?: string): Promise<{ succes
 
   const success = details.every((d) => !d.startsWith('✗'));
   return { success, details };
+} finally {
+  if (mcpServer) {
+    await mcpServer.close().catch(() => {});
+  }
+}
 }
 
 // Direct CLI invocation
