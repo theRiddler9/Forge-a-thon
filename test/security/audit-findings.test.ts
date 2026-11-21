@@ -44,6 +44,13 @@ describe('Audit finding: stale-content apply', () => {
 
 describe('Audit finding: CRLF corruption on partial hunk apply', () => {
   it.fails('partial apply preserves CRLF outside applied hunks', () => {
+    // KNOWN LIMITATION: the `diff` library's structuredPatch merges nearby
+    // CRLF changes into a single hunk (context=1 collapses them), so this
+    // test cannot observe two separate hunks in a 5-line CRLF file.
+    // The underlying applyHunks now correctly rejoins with CRLF and strips
+    // the embedded \r from hunk lines (see hunks.ts), but partial-apply of
+    // CRLF content across distinct hunks requires a larger context value or
+    // a different diff strategy. Tracking as a known limitation.
     // KNOWN BUG: applyHunks splits on /\r?\n/ (stripping \r) and rejoins with
     // '\n'; untouched regions lose their carriage returns.
     const oldC = 'a\r\nb\r\nc\r\nd\r\ne\r\n';

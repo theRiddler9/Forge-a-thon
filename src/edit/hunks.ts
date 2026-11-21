@@ -54,19 +54,22 @@ export function applyHunks(
   // Sort descending by oldStart to prevent line shift from affecting preceding hunks
   const sortedHunks = [...hunksToApply].sort((a, b) => b.oldStart - a.oldStart);
 
+  const eol = oldContent.includes('\r\n') ? '\r\n' : '\n';
   let lines = oldContent.split(/\r?\n/);
-  const hadTrailingNewline = oldContent.endsWith('\n');
+  const hadTrailingNewline = oldContent.endsWith('\n') || oldContent.endsWith('\r\n');
   if (hadTrailingNewline && lines[lines.length - 1] === '') {
     lines.pop();
   }
 
   for (const hunk of sortedHunks) {
-    // Extract new lines from hunk (lines starting with ' ' or '+')
+    // Extract new lines from hunk (lines starting with ' ' or '+').
+    // Strip trailing '\r' because structuredPatch embeds the original CR
+    // into hunk line content; we rejoin using the detected EOL below.
     const replacementLines: string[] = [];
     for (const l of hunk.lines) {
       if (l.startsWith('\\')) continue; // Ignore '\ No newline at end of file'
       if (l.startsWith(' ') || l.startsWith('+')) {
-        replacementLines.push(l.slice(1));
+        replacementLines.push(l.slice(1).replace(/\r$/, ''));
       }
     }
 
@@ -74,9 +77,9 @@ export function applyHunks(
     lines.splice(startIndex, hunk.oldLines, ...replacementLines);
   }
 
-  let result = lines.join('\n');
-  if (hadTrailingNewline && !result.endsWith('\n')) {
-    result += '\n';
+  let result = lines.join(eol);
+  if (hadTrailingNewline && !result.endsWith(eol)) {
+    result += eol;
   }
 
   return {
