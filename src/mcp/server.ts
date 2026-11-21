@@ -39,8 +39,14 @@ export async function startMcpServer(options: McpServerOptions = {}): Promise<Mc
     const hostHeader = req.headers.host || `${host}:${port}`;
     const url = new URL(req.url ?? '/', `http://${hostHeader}`);
 
-    if (req.method === 'GET' && url.pathname === '/sse') {
-      if (authToken && url.searchParams.get('token') !== authToken) {
+    const matchesPath = url.pathname === '/sse' || (authToken && url.pathname === `/${authToken}/sse`);
+    if (req.method === 'GET' && matchesPath) {
+      const headerAuth = req.headers.authorization?.replace(/^Bearer\s+/i, '');
+      const queryToken = url.searchParams.get('token');
+      const pathToken = authToken && url.pathname === `/${authToken}/sse` ? authToken : undefined;
+      const providedToken = queryToken || headerAuth || pathToken;
+
+      if (authToken && providedToken !== authToken) {
         res.writeHead(401, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Unauthorized: invalid or missing token' }));
         return;
@@ -86,6 +92,10 @@ export async function startMcpServer(options: McpServerOptions = {}): Promise<Mc
 
   const address = httpServer.address() as any;
   const actualPort = address.port;
+  // NOTE: The token is passed as a query param (?token=...). TrueForge must
+  // preserve query params when registering and later calling the MCP server URL.
+  // We also accept Authorization: Bearer <token> and path segment /<token>/sse
+  // as fallbacks if TrueForge or an intermediary proxy strips query parameters.
   const actualUrl = authToken
     ? `http://${host}:${actualPort}/sse?token=${encodeURIComponent(authToken)}`
     : `http://${host}:${actualPort}/sse`;

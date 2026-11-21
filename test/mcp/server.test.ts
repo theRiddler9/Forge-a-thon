@@ -32,4 +32,9 @@ describe('In-Process MCP Server', () => {
 
     await client.close();
   });
+
+  it('includes auth token as query param in returned URL', async () => {
+    instance = await startMcpServer({ port: 0, authToken: 'testtoken123' });
+    expect(instance.url).toContain('?token=testtoken123');
+  });
 });

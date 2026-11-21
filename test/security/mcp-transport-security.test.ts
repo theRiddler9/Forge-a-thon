@@ -97,6 +97,20 @@ describe('MCP transport security — authenticated mode', () => {
     expect(instance!.url).toContain(`/sse?token=${encodeURIComponent(TOKEN)}`);
   });
 
+  it('accepts the SSE handshake with token in Authorization header fallback', async () => {
+    const res = await fetch(`http://${instance!.host}:${instance!.port}/sse`, {
+      headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/event-stream');
+  });
+
+  it('accepts the SSE handshake with token in path segment fallback', async () => {
+    const res = await fetch(`http://${instance!.host}:${instance!.port}/${TOKEN}/sse`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/event-stream');
+  });
+
   it('rejects /messages POSTs with an unknown sessionId', async () => {
     const res = await fetch(
       `http://${instance!.host}:${instance!.port}/messages?sessionId=forged-session`,
