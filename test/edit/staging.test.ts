@@ -125,4 +125,24 @@ describe('EditStaging & SnapshotManager', () => {
     // decisionMade stays true so apply does not fall back to accept-all
     expect(proposal.decisionMade).toBe(true);
   });
+
+  it('SnapshotManager caps history to 50 entries', () => {
+    const mgr = new SnapshotManager();
+    for (let i = 0; i < 60; i++) {
+      mgr.createSnapshot('/f.txt', `version ${i}`);
+    }
+    expect(mgr.historySize()).toBeLessThanOrEqual(50);
+    expect(mgr.historySize()).toBe(50);
+    // Oldest entries (0..9) should have been shifted out
+    const peek = mgr.peekLastChange();
+    expect(peek?.restoredContent).toBe('version 59');
+  });
+
+  it('EditStagingManager caps finalizedProposals map to 150 entries', () => {
+    const staging = new EditStagingManager();
+    for (let i = 0; i < 70; i++) {
+      staging.finalizeProposal(`prop-custom-${i}`, 1, 1);
+    }
+    expect(staging.finalizedProposalsSize()).toBeLessThanOrEqual(150);
+  });
 });

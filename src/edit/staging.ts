@@ -423,6 +423,12 @@ export class EditStagingManager {
     this.finalizedProposals.set(proposalId, record);
     if (rel) this.finalizedProposals.set(rel, record);
 
+    while (this.finalizedProposals.size > 150) {
+      const oldestKey = this.finalizedProposals.keys().next().value;
+      if (oldestKey === undefined) break;
+      this.finalizedProposals.delete(oldestKey);
+    }
+
     if (proposal && typeof appliedCount === 'number') {
       this.recentApplies.push({
         path: proposal.fullPath,
@@ -457,6 +463,10 @@ export class EditStagingManager {
       }
     }
     return false;
+  }
+
+  finalizedProposalsSize(): number {
+    return this.finalizedProposals.size;
   }
 
   getFinalizedRecord(proposalId: string): FinalizedProposalRecord | undefined {

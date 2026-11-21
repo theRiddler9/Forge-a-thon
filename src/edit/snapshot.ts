@@ -7,6 +7,11 @@ export interface FileSnapshot {
 
 export class SnapshotManager {
   private history: FileSnapshot[] = [];
+  private readonly maxHistory: number;
+
+  constructor(maxHistory = 50) {
+    this.maxHistory = maxHistory;
+  }
 
   createSnapshot(filePath: string, contentBefore: string): string {
     const id = `snap-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -16,7 +21,14 @@ export class SnapshotManager {
       restoredContent: contentBefore,
       timestamp: Date.now(),
     });
+    if (this.history.length > this.maxHistory) {
+      this.history.shift();
+    }
     return id;
+  }
+
+  historySize(): number {
+    return this.history.length;
   }
 
   canUndo(): boolean {
