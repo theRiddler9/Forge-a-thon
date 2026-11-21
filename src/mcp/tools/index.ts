@@ -81,8 +81,10 @@ export function registerAllMcpTools(server: McpServer, workspaceRoot: string): v
       newContent: z.string().optional().describe('Proposed new content for the file'),
       edits: z.array(z.object({
         search: z.string().describe('Exact code snippet in the file to replace'),
-        replace: z.string().describe('New code to replace the search snippet with')
+        replace: z.string().describe('New code to replace the search snippet with'),
+        reason: z.string().optional().describe('Why this specific edit is needed (shown to the reviewer)')
       })).optional().describe('Targeted search-and-replace edits. Recommended when modifying existing files to avoid truncating them.'),
+      rationale: z.string().optional().describe('Why this change satisfies the user instruction (1-3 sentences, shown to the reviewer)'),
       proposalId: z.string().optional().describe('Internal proposal ID when executing approved changes'),
     },
     { destructiveHint: true },

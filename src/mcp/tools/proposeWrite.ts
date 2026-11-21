@@ -5,7 +5,8 @@ import { resolveInWorkspace, WorkspaceEscapeError } from './pathGuard.js';
 export interface ProposeWriteArgs {
   path: string;
   newContent?: string;
-  edits?: Array<{ search: string; replace: string }>;
+  edits?: Array<{ search: string; replace: string; reason?: string }>;
+  rationale?: string;
   proposalId?: string;
 }
 
@@ -55,14 +56,16 @@ export async function executeProposeWrite(
     args.path,
     args.newContent ?? '',
     undefined,
-    args.edits
+    args.edits,
+    args.rationale
   );
 
+  const rationaleLine = args.rationale ? ` Rationale: ${args.rationale}` : '';
   return {
     content: [
       {
         type: 'text',
-        text: `Edit proposed for ${proposal.relativePath} (${proposal.hunks.length} hunks). The user will review each hunk and approve or reject. Nothing touches disk until then.`,
+        text: `Edit proposed for ${proposal.relativePath} (${proposal.hunks.length} hunks).${rationaleLine} The user will review each hunk and approve or reject. Nothing touches disk until then.`,
       },
     ],
   };

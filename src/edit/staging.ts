@@ -26,6 +26,8 @@ export interface StagedProposal {
   rejectedHunkIds: Set<string>;
   createdAt: number;
   toolCallId?: string;
+  rationale?: string;
+  editReasons?: Array<string | undefined>;
 }
 
 export interface RecentApplyEntry {
@@ -224,7 +226,8 @@ export class EditStagingManager {
     relativePath: string,
     rawProposedContent: string,
     toolCallId?: string,
-    edits?: Array<{ search: string; replace: string }>
+    edits?: Array<{ search: string; replace: string; reason?: string }>,
+    rationale?: string
   ): StagedProposal {
     const normRel = relativePath.replace(/\\/g, '/').replace(/^\.\//, '');
     const fullPath = path.resolve(workspaceRoot, normRel);
@@ -258,6 +261,8 @@ export class EditStagingManager {
       rejectedHunkIds: new Set<string>(),
       createdAt: Date.now(),
       toolCallId,
+      rationale,
+      editReasons: edits?.map((e) => e.reason),
     };
 
     this.proposals.set(proposalId, proposal);
