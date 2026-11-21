@@ -14,7 +14,7 @@
 | **Licence** | MIT License (100% from scratch, zero upstream forks) |
 | **Runtime Target** | TrueForge Local Mode (`npx @truefoundry/trueforge@latest` on `http://localhost:8790`) |
 | **Target Benchmark** | Pallets Flask 3.1.3 (`commit 22d92470`, ~17k LOC) |
-| **Test Verification** | **114 Passed / 0 Failed** across 17 Vitest suites |
+| **Test Verification** | **139 Passed / 0 Failed** across 18 Vitest suites |
 | **Total Model Spend** | **$0.00** (under $1.00 USD total across all runs) |
 
 ---
@@ -134,7 +134,7 @@ Every criterion below was verified on-screen in the Pallets Flask 3.1.3 benchmar
 
 ## 7. TOOLS USED & DEVELOPMENT RIGOR
 - **AI Coding Assistants Declared:** Antigravity (Google DeepMind) and Devin (Cognition) were utilized as interactive pair-programming assistants for TypeScript boilerplate scaffolding, test harness generation, and code review.
-- **Verification & Testing Rigor:** Every line of code, MCP handler, hunk algorithm, and approval resume loop was executed, benchmarked, and validated locally. The project contains a comprehensive automated test suite of **114 passing Vitest tests** across 17 test suites (including mock SSE TrueForge servers, path traversal guards, MCP input schema validation, and snapshot undo engines). Zero regressions exist across the codebase.
+- **Verification & Testing Rigor:** Every line of code, MCP handler, hunk algorithm, and approval resume loop was executed, benchmarked, and validated locally. The project contains a comprehensive automated test suite of **139 passing Vitest tests** across 18 test suites (including mock SSE TrueForge servers, path traversal guards, MCP input schema validation, and snapshot undo engines). Zero regressions exist across the codebase.
 
 ---
 
