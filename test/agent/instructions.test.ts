@@ -41,6 +41,17 @@ describe('shared instructions', () => {
     expect(AGENT_INSTRUCTIONS).toContain('400 lines');
   });
 
+  it('agent instructions require multi-file planning and forbid writes outside Context chosen', () => {
+    expect(AGENT_INSTRUCTIONS).toContain('Files to modify:');
+    expect(AGENT_INSTRUCTIONS).toContain('FORBIDDEN: Proposing writes to files not in "Context chosen"');
+  });
+
+  it('agent/forgepilot.agent.json instructions match AGENT_INSTRUCTIONS exactly', () => {
+    const jsonPath = path.resolve(__dirname, '../../agent/forgepilot.agent.json');
+    const parsed = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+    expect(parsed.spec.instructions).toBe(AGENT_INSTRUCTIONS);
+  });
+
   it('inline instructions require scoped edits and rationale', () => {
     expect(INLINE_EDIT_INSTRUCTIONS).toContain('ONLY the selected region');
     expect(INLINE_EDIT_INSTRUCTIONS).toContain('rationale');
