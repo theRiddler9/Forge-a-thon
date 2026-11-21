@@ -28,6 +28,8 @@ export interface StagedProposal {
   toolCallId?: string;
   rationale?: string;
   editReasons?: Array<string | undefined>;
+  /** True once the user has made at least one explicit hunk decision. */
+  decisionMade?: boolean;
 }
 
 export interface RecentApplyEntry {
@@ -299,7 +301,7 @@ export class EditStagingManager {
   setHunkDecision(
     proposalId: string,
     hunkId: string,
-    decision: 'accepted' | 'rejected'
+    decision: 'accepted' | 'rejected' | 'pending'
   ): boolean {
     const proposal = this.getProposal(proposalId);
     if (!proposal) return false;
@@ -307,14 +309,19 @@ export class EditStagingManager {
     const hunk = proposal.hunks.find((h) => h.id === hunkId);
     if (!hunk) return false;
 
+    proposal.decisionMade = true;
     if (decision === 'accepted') {
       proposal.acceptedHunkIds.add(hunkId);
       proposal.rejectedHunkIds.delete(hunkId);
       hunk.state = 'accepted';
-    } else {
+    } else if (decision === 'rejected') {
       proposal.rejectedHunkIds.add(hunkId);
       proposal.acceptedHunkIds.delete(hunkId);
       hunk.state = 'rejected';
+    } else {
+      proposal.acceptedHunkIds.delete(hunkId);
+      proposal.rejectedHunkIds.delete(hunkId);
+      hunk.state = 'pending';
     }
     return true;
   }
@@ -323,6 +330,7 @@ export class EditStagingManager {
     const proposal = this.getProposal(proposalId);
     if (!proposal) return false;
 
+    proposal.decisionMade = true;
     for (const hunk of proposal.hunks) {
       proposal.acceptedHunkIds.add(hunk.id);
       proposal.rejectedHunkIds.delete(hunk.id);

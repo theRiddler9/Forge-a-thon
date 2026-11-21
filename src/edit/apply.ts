@@ -60,7 +60,12 @@ export async function applyProposalViaEditor(proposalId: string): Promise<Editor
     return { ok: false, reason: 'could not compute applied content (proposal may be gone)' };
   }
 
-  if (proposal && proposal.acceptedHunkIds.size === 0 && proposal.rejectedHunkIds.size === 0) {
+  if (
+    proposal &&
+    !proposal.decisionMade &&
+    proposal.acceptedHunkIds.size === 0 &&
+    proposal.rejectedHunkIds.size === 0
+  ) {
     // If user clicked apply/accept without explicitly picking individual hunks,
     // accept all non-rejected hunks by default
     for (const h of proposal.hunks) {

@@ -107,4 +107,22 @@ describe('EditStaging & SnapshotManager', () => {
     expect(staging.getProposal(proposal.proposalId)).toBeUndefined();
     expect(staging.getFinalizedRecord(proposal.proposalId)?.appliedCount).toBe(1);
   });
+
+  it('pending decision clears accepted/rejected state (webview deselect sync)', () => {
+    const staging = new EditStagingManager();
+    const proposal = staging.stageProposal(testDir, 'target.py', 'changed content\n');
+    const hunkId = proposal.hunks[0].id;
+
+    staging.setHunkDecision(proposal.proposalId, hunkId, 'accepted');
+    expect(proposal.acceptedHunkIds.has(hunkId)).toBe(true);
+    expect(proposal.decisionMade).toBe(true);
+
+    // User deselects the hunk in the review card — must clear server state too
+    staging.setHunkDecision(proposal.proposalId, hunkId, 'pending');
+    expect(proposal.acceptedHunkIds.has(hunkId)).toBe(false);
+    expect(proposal.rejectedHunkIds.has(hunkId)).toBe(false);
+    expect(proposal.hunks[0].state).toBe('pending');
+    // decisionMade stays true so apply does not fall back to accept-all
+    expect(proposal.decisionMade).toBe(true);
+  });
 });
