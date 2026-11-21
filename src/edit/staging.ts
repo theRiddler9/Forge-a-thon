@@ -547,6 +547,12 @@ export class EditStagingManager {
     return null;
   }
 
+  /**
+   * @deprecated Use applyProposalViaEditor() in production code.
+   * This method writes directly to disk via fs.writeFileSync, bypassing the
+   * VS Code WorkspaceEdit pipeline and native editor undo stack.
+   * Retained for unit tests that cannot access the VS Code API.
+   */
   applyProposal(proposalId: string): {
     success: boolean;
     appliedCount: number;

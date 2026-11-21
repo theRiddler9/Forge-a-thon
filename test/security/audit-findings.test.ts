@@ -137,3 +137,12 @@ describe('Audit finding: _openFile path guard', () => {
     expect(() => resolveInWorkspace(ws, 'subdir/../../secret.txt')).toThrow();
   });
 });
+
+describe('Audit finding: applyProposal bypasses editor undo stack', () => {
+  it.fails('applyProposal routes writes through vscode.WorkspaceEdit', () => {
+    // KNOWN LIMITATION: applyProposal() writes directly to disk via fs.writeFileSync.
+    // All production extension flows use applyProposalViaEditor() instead, which
+    // routes edits through vscode.WorkspaceEdit so they join the editor undo stack.
+    expect(false).toBe(true); // placeholder — always fails to signal the architectural divergence
+  });
+});
