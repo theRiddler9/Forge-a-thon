@@ -369,7 +369,7 @@ function appendToolCard(name: string, args: any, isDestructive: boolean = false)
 }
 
 // ===== Figma proposal review card (per-hunk accept/reject) =====
-function appendProposalReview(proposalId: string, filePath: string, hunks: any[], toolCallId?: string, rationale?: string) {
+function appendProposalReview(proposalId: string, filePath: string, hunks: any[], toolCallId?: string, rationale?: string, editReasons?: Array<string | undefined>) {
   const card = document.createElement('div');
   card.className = 'proposal-review';
   card.id = `proposal-${proposalId}`;
@@ -395,6 +395,7 @@ function appendProposalReview(proposalId: string, filePath: string, hunks: any[]
       </div>
     </div>
     ${rationale ? `<div class="proposal-rationale"><span class="rationale-label">Why:</span> ${escapeHtml(rationale)}</div>` : ''}
+    ${editReasons && editReasons.some(Boolean) ? `<div class="proposal-rationale edit-reasons">${editReasons.map((r, i) => r ? `<div><span class="rationale-label">Edit ${i + 1}:</span> ${escapeHtml(r)}</div>` : '').join('')}</div>` : ''}
     <div class="hunk-list"></div>
     <div class="proposal-footer">
       <button class="reject-all-btn">Reject All</button>
@@ -418,6 +419,9 @@ function appendProposalReview(proposalId: string, filePath: string, hunks: any[]
     if (decision === null) {
       decisions.delete(hunkId);
       rowEl.classList.remove('accepted', 'rejected');
+      // Keep the extension's staging state in sync: a visually deselected
+      // hunk must also be undecided server-side, or it would still apply.
+      vscode.postMessage({ type: 'hunkDecision', proposalId, hunkId: hunkId, decision: 'pending' });
     } else {
       decisions.set(hunkId, decision);
       rowEl.classList.toggle('accepted', decision === 'accepted');
@@ -803,7 +807,7 @@ window.addEventListener('message', (event) => {
       break;
 
     case 'proposalReview':
-      appendProposalReview(msg.proposalId, msg.filePath, msg.hunks, msg.toolCallId, msg.rationale);
+      appendProposalReview(msg.proposalId, msg.filePath, msg.hunks, msg.toolCallId, msg.rationale, msg.editReasons);
       break;
 
     case 'proposalApplied':

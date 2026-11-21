@@ -290,6 +290,7 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
                 filePath: proposal.relativePath,
                 hunks: proposal.hunks,
                 rationale: proposal.rationale,
+                editReasons: proposal.editReasons,
               });
               return;
             }
