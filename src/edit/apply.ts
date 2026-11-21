@@ -75,7 +75,10 @@ export async function applyProposalViaEditor(proposalId: string): Promise<Editor
     if (globalEditStaging.isFinalized(resolvedId) || globalEditStaging.isFinalized(proposalId)) {
       return { ok: true, appliedCount: 1, totalCount: 1, relativePath: proposal.relativePath, reason: 'Already applied' };
     }
-    return { ok: false, reason: 'could not compute applied content (proposal may be gone)' };
+    return {
+      ok: false,
+      reason: preview.reason ?? 'could not compute applied content (proposal may be gone)',
+    };
   }
 
   const fullPath = preview.fullPath!;

@@ -345,6 +345,8 @@ export class EditStagingManager {
     fullPath?: string;
     relativePath?: string;
     originalContent?: string;
+    stale?: boolean;
+    reason?: string;
   } {
     const proposal = this.getProposal(proposalId);
     if (!proposal) {
@@ -353,6 +355,20 @@ export class EditStagingManager {
 
     if (!isInsideWorkspace(proposal.workspaceRoot, proposal.fullPath)) {
       return { success: false, appliedCount: 0, totalCount: 0 };
+    }
+
+    // Stale-content guard: the file may have changed on disk (or been created
+    // or deleted) after the proposal was staged. Applying hunks computed
+    // against stage-time content would silently discard those edits.
+    const staleness = this.checkStaleness(proposal);
+    if (staleness) {
+      return {
+        success: false,
+        appliedCount: 0,
+        totalCount: proposal.hunks.length,
+        stale: true,
+        reason: staleness,
+      };
     }
 
     const { newContent, appliedCount, totalCount } = applyHunks(
@@ -491,6 +507,28 @@ export class EditStagingManager {
     return undefined;
   }
 
+  /**
+   * Returns a human-readable reason if the file on disk no longer matches the
+   * content the proposal's hunks were computed against, else null.
+   */
+  checkStaleness(proposal: StagedProposal): string | null {
+    const exists = fs.existsSync(proposal.fullPath);
+    if (!exists) {
+      return proposal.originalContent.length > 0
+        ? `file ${proposal.relativePath} was deleted after the proposal was staged`
+        : null;
+    }
+    try {
+      const current = fs.readFileSync(proposal.fullPath, 'utf8');
+      if (current !== proposal.originalContent) {
+        return `file ${proposal.relativePath} changed on disk after the proposal was staged; re-run the agent to regenerate the proposal`;
+      }
+    } catch {
+      return `could not read ${proposal.relativePath} to verify it is unchanged`;
+    }
+    return null;
+  }
+
   applyProposal(proposalId: string): {
     success: boolean;
     appliedCount: number;
@@ -511,6 +549,12 @@ export class EditStagingManager {
     // Last line of defence: never write outside the workspace, even if a
     // proposal was staged by a hostile caller.
     if (!isInsideWorkspace(proposal.workspaceRoot, proposal.fullPath)) {
+      this.proposals.delete(proposalId);
+      return { success: false, appliedCount: 0, totalCount };
+    }
+
+    const staleness = this.checkStaleness(proposal);
+    if (staleness) {
       this.proposals.delete(proposalId);
       return { success: false, appliedCount: 0, totalCount };
     }

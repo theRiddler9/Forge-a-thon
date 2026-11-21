@@ -23,11 +23,10 @@ describe('Audit finding: stale-content apply', () => {
     try { fs.rmSync(ws, { recursive: true, force: true }); } catch {}
   });
 
-  it.fails('apply refuses when the file changed after staging', () => {
-    // KNOWN BUG: hunks are computed against originalContent captured at stage
-    // time; applyProposal then replaces the WHOLE document, silently
-    // discarding any edit made between staging and approval. Safe behaviour:
-    // detect drift (hash mismatch) and refuse or re-diff.
+  it('apply refuses when the file changed after staging', () => {
+    // Hunks are computed against originalContent captured at stage time;
+    // applyProposal must detect drift and refuse rather than silently
+    // discarding interim edits.
     const staging = new EditStagingManager(new SnapshotManager());
     const prop = staging.stageProposal(ws, 'f.txt', 'line1\nCHANGED\nline3\n');
     staging.acceptAllHunks(prop.proposalId);
@@ -35,9 +34,11 @@ describe('Audit finding: stale-content apply', () => {
     // User (or another tool) edits the file after the proposal was staged
     fs.writeFileSync(path.join(ws, 'f.txt'), 'line1\nline2\nline3\nUSER_EDIT\n');
 
-    staging.applyProposal(prop.proposalId);
+    const result = staging.applyProposal(prop.proposalId);
+    expect(result.success).toBe(false);
     const onDisk = fs.readFileSync(path.join(ws, 'f.txt'), 'utf8');
     expect(onDisk).toContain('USER_EDIT'); // interim edit must survive
+    expect(onDisk).not.toContain('CHANGED');
   });
 });
 
