@@ -202,8 +202,8 @@ def build_writeup_story():
     story.append(Paragraph("• <b>Embedded Streamable HTTP MCP Server:</b> ForgePilot hosts an in-process Streamable HTTP MCP server "
                            "(using <font name='Courier'>@modelcontextprotocol/sdk</font>) on dynamic port 8795. Upon session setup, it auto-registers "
                            "with TrueForge settings (<font name='Courier'>createOrUpdate</font>). Standard tools exposed: <font name='Courier'>list_dir</font>, "
-                           "<font name='Courier'>read_file</font> (400-line cap), <font name='Courier'>search_text</font> (40-hit cap), <font name='Courier'>find_symbol</font>, "
-                           "<font name='Courier'>get_context_budget_info</font>, <font name='Courier'>propose_write</font>, and <font name='Courier'>run_command</font>.", bullet_style))
+                           "<font name='Courier'>read_file</font> (400-line cap, secret masking), <font name='Courier'>search_text</font> (40-hit cap), <font name='Courier'>find_symbol</font>, "
+                           "<font name='Courier'>get_context_budget_info</font>, <font name='Courier'>propose_write</font>, and <font name='Courier'>run_command</font> (sanitized env).", bullet_style))
     story.append(Paragraph("• <b>Safe Edits Driven by TrueForge Tool Approvals (B4 + B2 + A3):</b> <font name='Courier'>propose_write</font> is marked "
                            "<font name='Courier'>destructiveHint: true</font>. The tool never modifies disk during proposal. When TrueForge emits "
                            "<font name='Courier'>tool.approval_required</font>, ForgePilot stages the edit in memory, computes unified hunks against active editor buffers, "
@@ -391,7 +391,7 @@ def build_writeup_story():
                       header_meta_style),
             Paragraph("<b>Audit Checksum:</b> Pallets Flask 3.1.3 (commit 22d92470)<br/>"
                       "<b>Automated Tests:</b> 145 Passed (100% Green)<br/>"
-                      "<b>Models:</b> Gemini 3.1 Flash-Lite / Qwen 2.5 7B<br/>"
+                      "<b>Models:</b> Gemini 3.1 Flash-Lite / Qwen 3.8 27B / Qwen 2.5 7B<br/>"
                       "<b>Total Spend:</b> $0.00 / < $1.00 USD", header_meta_style)
         ]
     ]

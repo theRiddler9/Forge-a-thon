@@ -153,3 +153,5 @@ Every criterion below was verified on-screen in the Pallets Flask 3.1.3 benchmar
 
 ### Executive Sign-Off & Invariants Summary
 ForgePilot satisfies all eligibility criteria of TrueForge Forge-a-thon Round 1. It operates strictly as a client to TrueForge local mode, initiates zero direct model provider connections, exposes editor capabilities via in-process Streamable HTTP MCP tools, and guarantees workspace integrity through approval-gated diff reviews and instant undo. Clean clone verified; ready for live evaluation.
+
+
