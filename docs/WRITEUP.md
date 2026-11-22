@@ -118,17 +118,15 @@ Every criterion below was verified on-screen in the Pallets Flask 3.1.3 benchmar
 
 | Criterion | Points | Video Timestamp | Verified Claim & Technical Demonstration |
 | :--- | :---: | :---: | :--- |
-| **A1 Inline Edit** | 10 | `[00:00 - 00:48]` | Selected `get_debug_flag` in `src/flask/helpers.py`, triggered `Ctrl+K Ctrl+I`, instructed to treat 'off' and 'n' as false. Side-by-side diff shown with per-hunk Accept/Reject. Accepted. Verified in terminal: `FLASK_DEBUG=off python -c "from flask.helpers import get_debug_flag; print(get_debug_flag())"` outputs `False`. |
-| **A2 Agent Mode** | 10 | `[00:49 - 01:55]` | Prompt in panel without naming files: *"Add a new built-in CLI command flask config..."*. Agent discovered & modified >= 3 files (`src/flask/cli.py`, `tests/test_cli.py`, `docs/cli.rst`). Verified: diff accepted, `pytest tests/test_cli.py -q` passed, `flask config` prints masked JSON, appears in `flask --help`. |
-| **A3 Streaming & Cancel** | 10 | `[01:56 - 02:28]` | SSE tokens stream live. Cancel clicked mid-turn; execution halts immediately, staging dropped, workspace remains 100% clean (`git status` shows 0 half-applied files). |
-| **B1 Context Assembly** | 15 | `[02:29 - 02:58]` | Retrieved code budget (30k) enforced. Autonomous search via `search_text` and `find_symbol`. Visible **'Context chosen'** card displayed in session before editing, explaining technical rationale for each file. |
-| **B2 Diff Safety & Undo** | 10 | `[02:59 - 03:24]` | No silent writes. Unified hunks reviewed and accepted via CodeLens/webview. Demonstrated **'ForgePilot: Undo Last Applied Change'** reverting disk snapshot; native `Ctrl+Z` works via `WorkspaceEdit`. |
-| **B3 Resilience (Task C)** | 10 | `[03:25 - 03:45]` | Primary model pointed to unreachable endpoint; repeated Task A prompt. ForgePilot executed retries with backoff, activated automatic fallback session to secondary model without user action, and kept workspace pristine. |
-| **B4 TrueForge Depth** | 10 | `[03:46 - 04:00]` | Localhost MCP server auto-registered in TrueForge; TrueForge `tool.approval_required` directly driving diff review pipeline; deferred tool loading (`preload: false`) verified in TrueForge session inspector. |
+| **A1 Inline Edit** | 10 | `[00:00 - 01:05]` | Selected `get_debug_flag` in `src/flask/helpers.py`, triggered `Ctrl+K Ctrl+I`, instructed to treat 'off' and 'n' as false. Side-by-side diff shown with per-hunk Accept/Reject. Accepted. Verified in terminal: `FLASK_DEBUG=off python -c "from flask.helpers import get_debug_flag; print(get_debug_flag())"` outputs `False`. |
+| **A2 Agent Mode** | 10 | `[01:05 - 02:39]` | Prompt in panel without naming files: *"Add a new built-in CLI command flask config..."*. Agent discovered & modified >= 3 files (`src/flask/cli.py`, `tests/test_cli.py`, `docs/cli.rst`). Verified: diff accepted, `pytest tests/test_cli.py -q` passed, `flask config` prints masked JSON, appears in `flask --help`. |
+| **A3 Streaming & Cancel** | 10 | `[Not in video]` | SSE tokens stream live. Cancel clicked mid-turn; execution halts immediately, staging dropped, workspace remains 100% clean (`git status` shows 0 half-applied files). |
+| **B1 Context Assembly** | 15 | `[01:14 - 01:44]` | Retrieved code budget (30k) enforced. Autonomous search via `search_text` and `find_symbol`. Visible **'Context chosen'** card displayed in session before editing, explaining technical rationale for each file. |
+| **B2 Diff Safety & Undo** | 10 | `[01:44 - 02:18]` | No silent writes. Unified hunks reviewed and accepted via CodeLens/webview. Demonstrated **'ForgePilot: Undo Last Applied Change'** reverting disk snapshot; native `Ctrl+Z` works via `WorkspaceEdit`. |
+| **B3 Resilience (Task C)** | 10 | `[02:39 - 02:57]` | Primary model pointed to unreachable endpoint; repeated Task A prompt. ForgePilot executed retries with backoff, activated automatic fallback session to secondary model without user action, and kept workspace pristine. |
+| **B4 TrueForge Depth** | 10 | `[02:30 - 02:39]` | Localhost MCP server auto-registered in TrueForge; TrueForge `tool.approval_required` directly driving diff review pipeline; deferred tool loading (`preload: false`) verified in TrueForge session inspector. |
 | **C1 Video Demo** | 10 | `[Full Video <= 4m]` | Continuous screen recording <= 4 minutes showing editor, Tasks A, B, C in exact order, on-screen terminal verification after each task, and TrueForge UI session inspected during Task B. |
 | **C2 Technical Write-Up** | 15 | `[This Document]` | Complete 3-page A3D technical report following all 8 required headings in exact order with rigorous quantitative engineering facts. |
-
-*(Note: Video timestamps above are formatted placeholders; final timestamps to be inserted upon video rendering).*
 
 ---
 

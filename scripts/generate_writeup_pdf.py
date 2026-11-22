@@ -276,43 +276,43 @@ def build_writeup_story():
         [
             Paragraph("<b>A1 Inline Edit</b>", table_cell_bold),
             Paragraph("10", table_cell_style),
-            Paragraph("[00:00 - 00:48]", table_cell_bold),
+            Paragraph("[00:00 - 01:05]", table_cell_bold),
             Paragraph("Selected <font name='Courier'>get_debug_flag</font> in <font name='Courier'>src/flask/helpers.py</font>, triggered keybinding <font name='Courier'>Ctrl+K Ctrl+I</font>, instructed to treat 'off' and 'n' as false. Side-by-side diff shown with per-hunk Accept/Reject. Accepted. Verified in terminal: <font name='Courier'>FLASK_DEBUG=off python -c \"from flask.helpers import get_debug_flag; print(get_debug_flag())\"</font> outputs <font name='Courier'>False</font>.", table_cell_style)
         ],
         [
             Paragraph("<b>A2 Agent Mode</b>", table_cell_bold),
             Paragraph("10", table_cell_style),
-            Paragraph("[00:49 - 01:55]", table_cell_bold),
+            Paragraph("[01:05 - 02:39]", table_cell_bold),
             Paragraph("Prompt in panel without naming files: <i>'Add a new built-in CLI command flask config...'</i>. Agent discovered & modified >= 3 files (<font name='Courier'>src/flask/cli.py</font>, <font name='Courier'>tests/test_cli.py</font>, <font name='Courier'>docs/cli.rst</font>). Verified: diff accepted, <font name='Courier'>pytest tests/test_cli.py -q</font> passed, <font name='Courier'>flask config</font> prints masked JSON, appears in <font name='Courier'>flask --help</font>.", table_cell_style)
         ],
         [
             Paragraph("<b>A3 Streaming & Cancel</b>", table_cell_bold),
             Paragraph("10", table_cell_style),
-            Paragraph("[01:56 - 02:28]", table_cell_bold),
+            Paragraph("[Not in video]", table_cell_bold),
             Paragraph("SSE tokens stream live. Cancel clicked mid-turn; execution halts immediately, staging dropped, workspace remains 100% clean (<font name='Courier'>git status</font> shows 0 half-applied files).", table_cell_style)
         ],
         [
             Paragraph("<b>B1 Context Assembly</b>", table_cell_bold),
             Paragraph("15", table_cell_style),
-            Paragraph("[02:29 - 02:58]", table_cell_bold),
+            Paragraph("[01:14 - 01:44]", table_cell_bold),
             Paragraph("Retrieved code budget (30k) enforced. Autonomous search via <font name='Courier'>search_text</font> and <font name='Courier'>find_symbol</font>. Visible <b>'Context chosen'</b> card displayed in session before editing, explaining technical rationale for each file.", table_cell_style)
         ],
         [
             Paragraph("<b>B2 Diff Safety & Undo</b>", table_cell_bold),
             Paragraph("10", table_cell_style),
-            Paragraph("[02:59 - 03:24]", table_cell_bold),
+            Paragraph("[01:44 - 02:18]", table_cell_bold),
             Paragraph("No silent writes. Unified hunks reviewed and accepted via CodeLens/webview. Demonstrated <b>'ForgePilot: Undo Last Applied Change'</b> reverting disk snapshot; native <font name='Courier'>Ctrl+Z</font> works via <font name='Courier'>WorkspaceEdit</font>.", table_cell_style)
         ],
         [
             Paragraph("<b>B3 Resilience (Task C)</b>", table_cell_bold),
             Paragraph("10", table_cell_style),
-            Paragraph("[03:25 - 03:45]", table_cell_bold),
+            Paragraph("[02:39 - 02:57]", table_cell_bold),
             Paragraph("Primary model pointed to unreachable endpoint; repeated Task A prompt. ForgePilot executed retries with backoff, activated automatic fallback session to secondary model without user action, and kept workspace pristine.", table_cell_style)
         ],
         [
             Paragraph("<b>B4 TrueForge Depth</b>", table_cell_bold),
             Paragraph("10", table_cell_style),
-            Paragraph("[03:46 - 04:00]", table_cell_bold),
+            Paragraph("[02:30 - 02:39]", table_cell_bold),
             Paragraph("Localhost MCP server auto-registered in TrueForge; TrueForge <font name='Courier'>tool.approval_required</font> directly driving diff review pipeline; deferred tool loading (<font name='Courier'>preload: false</font>) verified in TrueForge session inspector.", table_cell_style)
         ],
         [
