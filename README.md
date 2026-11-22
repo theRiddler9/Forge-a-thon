@@ -14,12 +14,12 @@ Built from scratch for the TrueForge Forge-a-thon (Round 1). MIT licensed.
 | Model access | Configured inside TrueForge only. The extension has no provider SDK |
 | Editor capability | Localhost MCP server, 7 tools, stdio-free SSE transport |
 | Write path | `propose_write` -> TrueForge approval -> hunk review -> `WorkspaceEdit` |
-| Test suite | 114 tests across 17 Vitest suites, `npm test` |
+| Test suite | 145 tests across 19 Vitest suites, `npm test` |
 
 ## Demo
 
-- **Video:** [ForgePilot demo (4 min)](https://drive.google.com/file/d/1RLlnqAdQNODPK4owNfAOZgysbNhAXfoB/view?usp=drive_link)
-- **Write-up:** [Technical write-up (3 pages)](https://drive.google.com/file/d/1LZXDBqiZaiC3TxyFkiRw3W6uGPwTVpTW/view?usp=sharing)
+- **Video:** [ForgePilot demo (under 4 min)](https://drive.google.com/file/d/1Grc_iWR7w5GaH0TxBXL-l37IrURqnoHr/view?usp=drive_link)
+- **Write-up:** [Technical write-up (3 pages)](https://drive.google.com/file/d/1hsWyS69M7ZWmdH7Ot5We-Vr8EaEPqRaf/view?usp=drive_link)
 - **Screenshots:** full-size captures in [`docs/screenshots`](docs/screenshots)
 
 | Task A: inline edit with per-hunk review | Task B: agent run with MCP tool log |
@@ -378,8 +378,8 @@ the regression tests in `test/security/`, and Antigravity for UI scaffolding.
 ## Submission
 
 - Repository: [github.com/theRiddler9/Forge-a-thon](https://github.com/theRiddler9/Forge-a-thon)
-- Technical write-up: [PDF (3 pages)](https://drive.google.com/file/d/1LZXDBqiZaiC3TxyFkiRw3W6uGPwTVpTW/view?usp=sharing), also in the repo at [WRITEUP.pdf](WRITEUP.pdf)
-- Demo video: [ForgePilot demo (4 min)](https://drive.google.com/file/d/1RLlnqAdQNODPK4owNfAOZgysbNhAXfoB/view?usp=drive_link)
+- Technical write-up: [PDF (3 pages)](https://drive.google.com/file/d/1hsWyS69M7ZWmdH7Ot5We-Vr8EaEPqRaf/view?usp=drive_link), also in the repo at [WRITEUP.pdf](WRITEUP.pdf)
+- Demo video: [ForgePilot demo (under 4 min)](https://drive.google.com/file/d/1Grc_iWR7w5GaH0TxBXL-l37IrURqnoHr/view?usp=drive_link)
 
 ## License
 
