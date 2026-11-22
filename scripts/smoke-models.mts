@@ -1,8 +1,11 @@
 import { TrueForge } from '@truefoundry/trueforge-sdk';
 
 const MODELS = [
+  'google-gemini/gemini-3-1-flash-lite',
+  'google-gemini/gemini-flash-lite-latest',
   'groq/openai-gpt-oss-120b',
   'groq/openai-gpt-oss-20b',
+  'groq/qwen-3-8-27b',
 ];
 
 const client = new TrueForge({ baseUrl: 'http://localhost:8790', timeoutInSeconds: 120 });

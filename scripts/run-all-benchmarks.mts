@@ -110,6 +110,7 @@ async function main() {
 @with_appcontext
 def config_command() -> None:
     """Print the loaded application's configuration as JSON, masking sensitive keys."""
+    import json
     masked: dict[str, t.Any] = {}
     sensitive = {"SECRET", "PASSWORD", "TOKEN", "KEY"}
     for k, v in current_app.config.items():
