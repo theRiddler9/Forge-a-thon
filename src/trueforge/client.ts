@@ -292,13 +292,32 @@ export class TrueForgeClient {
             const sourceEvent = eventsMap.get(sourceEventId);
             const rawTools = sourceEvent?.toolCalls ?? sourceEvent?.tool_calls ?? [];
             const toolCall = rawTools.find((tc: any) => tc.id === toolCallId);
-            const toolName = toolCall?.name ?? toolCall?.function?.name ?? 'unknown';
-            let toolArgs = toolCall?.arguments ?? toolCall?.function?.arguments ?? {};
+            let toolName = toolCall?.name ?? toolCall?.function?.name ?? (call as any).name ?? (call as any).toolName ?? 'unknown';
+            let toolArgs = toolCall?.arguments ?? toolCall?.function?.arguments ?? (call as any).arguments ?? (call as any).args ?? {};
             if (typeof toolArgs === 'string') {
               try {
                 toolArgs = JSON.parse(toolArgs);
               } catch {
                 toolArgs = {};
+              }
+            }
+
+            // If TrueForge or the model wraps the tool call in generic 'call_tool' or 'call',
+            // unwrap the inner tool name and arguments
+            if (toolName === 'call_tool' || toolName === 'call' || toolName === 'unknown') {
+              const innerName = toolArgs.name || toolArgs.tool || toolArgs.toolName;
+              if (innerName) {
+                toolName = innerName;
+                if (toolArgs.arguments || toolArgs.args || toolArgs.parameters) {
+                  const innerArgs = toolArgs.arguments || toolArgs.args || toolArgs.parameters;
+                  if (typeof innerArgs === 'string') {
+                    try {
+                      toolArgs = JSON.parse(innerArgs);
+                    } catch {}
+                  } else if (typeof innerArgs === 'object' && innerArgs !== null) {
+                    toolArgs = innerArgs;
+                  }
+                }
               }
             }
             if (callbacks.onToolApprovalRequired) {

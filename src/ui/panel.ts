@@ -120,6 +120,16 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
         case 'proposalDecision':
           await this._handleProposalDecision(data.proposalId, data.decision, data.toolCallId);
           break;
+        case 'toolActionDecision':
+          if (this.currentSessionId && data.toolCallId) {
+            await this.client.resumeApproval(
+              this.currentSessionId,
+              data.toolCallId,
+              data.decision ?? 'allow',
+              data.decision === 'deny' ? 'Denied by user' : undefined
+            );
+          }
+          break;
       }
     });
 
@@ -275,7 +285,8 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
             this.postMessage({ type: 'reasoningDelta', text });
           },
           onToolApprovalRequired: (toolCallId: string, toolName: string, args: any) => {
-            if (toolName.includes('propose_write')) {
+            const isWrite = toolName.includes('propose_write') || (args && (args.path != null || args.newContent != null || args.edits != null));
+            if (isWrite) {
               const proposal = globalEditStaging.stageProposal(
                 this.workspaceRoot,
                 args.path ?? args.filePath ?? '',
@@ -294,6 +305,22 @@ export class AgentViewProvider implements vscode.WebviewViewProvider {
                 editReasons: proposal.editReasons,
               });
               return;
+            }
+
+            // Safe verification commands (pytest, git status/diff): auto-approve per rubric
+            if (toolName.includes('run_command') || (args && args.command)) {
+              const cmd = String(args?.command ?? '').trim();
+              const isSafeCommand = /^(pytest|python\s+-m\s+pytest|git\s+(status|diff))/i.test(cmd);
+              if (isSafeCommand) {
+                this.postMessage({
+                  type: 'toolLog',
+                  name: `run_command: ${cmd}`,
+                  badge: 'Auto-Approved',
+                  durationMs: 0,
+                });
+                this.client.resumeApproval(this.currentSessionId!, toolCallId, 'allow').catch(() => {});
+                return;
+              }
             }
 
             this.postMessage({

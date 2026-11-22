@@ -333,7 +333,7 @@ function appendToolLogRow(msg: any) {
 }
 
 // ===== Pending (approval-gated) tool action card =====
-function appendPendingActionCard(toolName: string, args: any) {
+function appendPendingActionCard(toolName: string, args: any, toolCallId?: string) {
   const card = document.createElement('div');
   card.className = 'pending-tool-card';
   const target = args && typeof args === 'object' ? (args.path ?? args.command ?? '') : '';
@@ -351,21 +351,52 @@ function appendPendingActionCard(toolName: string, args: any) {
         <span class="pending-tool-sub">${toolName === 'propose_write' && args?.newContent != null ? 'Add/update file with proposed content' : 'Waiting for your approval to run'}</span>
       </span>
       <span class="pending-tool-badge">Awaiting Approval</span>
-    </div>`;
+    </div>
+    ${toolCallId ? `
+    <div class="pending-tool-buttons" style="display:flex;gap:8px;padding:8px 12px;border-top:1px solid var(--vscode-widget-border, rgba(255,255,255,0.08));">
+      <button class="approve-action-btn" style="background:var(--vscode-button-background,#0e639c);color:var(--vscode-button-foreground,#fff);border:none;padding:5px 12px;border-radius:3px;cursor:pointer;font-size:11px;font-weight:600;">Approve</button>
+      <button class="deny-action-btn" style="background:transparent;color:var(--vscode-descriptionForeground,#aaa);border:1px solid var(--vscode-widget-border,#555);padding:5px 12px;border-radius:3px;cursor:pointer;font-size:11px;">Deny</button>
+    </div>` : ''}`;
+
+  if (toolCallId) {
+    const approveBtn = card.querySelector('.approve-action-btn') as HTMLElement;
+    const denyBtn = card.querySelector('.deny-action-btn') as HTMLElement;
+    approveBtn?.addEventListener('click', () => {
+      const badge = card.querySelector('.pending-tool-badge');
+      if (badge) {
+        badge.textContent = 'Approved ✓';
+        (badge as HTMLElement).style.color = '#3fb950';
+      }
+      approveBtn.style.display = 'none';
+      denyBtn.style.display = 'none';
+      vscode.postMessage({ type: 'toolActionDecision', toolCallId, decision: 'allow' });
+    });
+    denyBtn?.addEventListener('click', () => {
+      const badge = card.querySelector('.pending-tool-badge');
+      if (badge) {
+        badge.textContent = 'Denied ✗';
+        (badge as HTMLElement).style.color = '#f85149';
+      }
+      approveBtn.style.display = 'none';
+      denyBtn.style.display = 'none';
+      vscode.postMessage({ type: 'toolActionDecision', toolCallId, decision: 'deny' });
+    });
+  }
+
   chatLog.appendChild(card);
   chatLog.scrollTop = chatLog.scrollHeight;
 }
 
-function appendToolCard(name: string, args: any, isDestructive: boolean = false) {
+function appendToolCard(name: string, args: any, isDestructive: boolean = false, toolCallId?: string) {
   if (name.includes('propose_write')) {
     // Propose write is displayed exclusively via the dedicated proposal review card
     return;
   }
   if (isDestructive) {
-    appendPendingActionCard(name, args);
+    appendPendingActionCard(name, args, toolCallId);
     return;
   }
-  appendToolLogRow({ toolCallId: undefined, name, args, badge: '', durationMs: undefined });
+  appendToolLogRow({ toolCallId, name, args, badge: '', durationMs: undefined });
 }
 
 // ===== Figma proposal review card (per-hunk accept/reject) =====
@@ -804,7 +835,7 @@ window.addEventListener('message', (event) => {
       break;
 
     case 'toolCall':
-      appendToolCard(msg.name, msg.args, msg.isDestructive);
+      appendToolCard(msg.name, msg.args, msg.isDestructive, msg.id);
       break;
 
     case 'toolLog':
