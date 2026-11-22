@@ -21,6 +21,7 @@ export function registerInlineEditCommand(
 
     const selection = editor.selection;
     const selectedText = editor.document.getText(selection);
+    const docVersion = editor.document.version;
     const filePath = vscode.workspace.asRelativePath(editor.document.uri);
     const startLine = selection.start.line + 1;
     const endLine = selection.end.line + 1;
@@ -32,6 +33,13 @@ export function registerInlineEditCommand(
     });
 
     if (!instruction) return;
+
+    if (editor.document.version !== docVersion || editor.document.getText(editor.selection) !== selectedText) {
+      vscode.window.showWarningMessage(
+        'ForgePilot: Selection or document text changed while typing instruction. Inline edit cancelled to prevent misapplying edits.'
+      );
+      return;
+    }
 
     await vscode.window.withProgress(
       {

@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { globalContextBudget } from './contextBudget.js';
+import { maskSecrets } from './maskSecrets.js';
 
 export interface SearchTextArgs {
   query: string;
@@ -113,7 +114,13 @@ export async function executeSearchText(
 
   walk(workspaceRoot);
 
-  const outputText = results.length > 0 ? results.join('\n---\n') : `No matches found for query "${query}".`;
+  let outputText = results.length > 0 ? results.join('\n---\n') : `No matches found for query "${query}".`;
+  const { maskedText, maskedCount } = maskSecrets(outputText);
+  if (maskedCount > 0) {
+    outputText = maskedText + `\n[Note: ${maskedCount} credential(s) masked for context security]`;
+  } else {
+    outputText = maskedText;
+  }
   const finalText = globalContextBudget.enforceOutput(outputText, 'search_text', `Search "${query}"`);
 
   return {

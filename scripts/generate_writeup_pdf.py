@@ -147,7 +147,7 @@ def build_writeup_story():
             Paragraph("<b>Author:</b> Akash Mansingh (@theRiddler9)<br/>"
                       "<b>Institution:</b> VIT Vellore | <b>Licence:</b> MIT<br/>"
                       "<b>Repo:</b> github.com/theRiddler9/Forge-a-thon<br/>"
-                      "<b>Test Status:</b> 139/139 Vitest Passing (18 Suites)", header_meta_style)
+                      "<b>Test Status:</b> 145/145 Vitest Passing (19 Suites)", header_meta_style)
         ]
     ]
     header_table = Table(header_content, colWidths=[290, 178])
@@ -356,8 +356,8 @@ def build_writeup_story():
     ))
     story.append(Paragraph(
         "<b>Verification & Testing Rigor:</b> Every line of code, MCP handler, hunk algorithm, and approval resume loop was executed, "
-        "benchmarked, and validated locally. The project contains a comprehensive automated test suite of <b>139 passing Vitest tests</b> "
-        "across 18 test suites (including mock SSE TrueForge servers, path traversal guards, MCP input schema validation, and snapshot undo engines). "
+        "benchmarked, and validated locally. The project contains a comprehensive automated test suite of <b>145 passing Vitest tests</b> "
+        "across 19 test suites (including mock SSE TrueForge servers, path traversal guards, MCP input schema validation, secret masking, and snapshot undo engines). "
         "Zero regressions exist across the codebase.",
         body_style
     ))
@@ -390,7 +390,7 @@ def build_writeup_story():
                       "workspace integrity through approval-gated diff reviews and instant undo. Clean clone verified; ready for live evaluation.",
                       header_meta_style),
             Paragraph("<b>Audit Checksum:</b> Pallets Flask 3.1.3 (commit 22d92470)<br/>"
-                      "<b>Automated Tests:</b> 139 Passed (100% Green)<br/>"
+                      "<b>Automated Tests:</b> 145 Passed (100% Green)<br/>"
                       "<b>Models:</b> Gemini 3.1 Flash-Lite / Qwen 2.5 7B<br/>"
                       "<b>Total Spend:</b> $0.00 / < $1.00 USD", header_meta_style)
         ]

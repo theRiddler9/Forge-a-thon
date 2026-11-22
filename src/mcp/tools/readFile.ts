@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { globalContextBudget } from './contextBudget.js';
 import { resolveInWorkspace, WorkspaceEscapeError } from './pathGuard.js';
+import { maskSecrets } from './maskSecrets.js';
 
 export interface ReadFileArgs {
   path: string;
@@ -61,7 +62,13 @@ export async function executeReadFile(
     outputText += `\n[... ${remaining} more lines truncated. Specify startLine and endLine to read more ...]`;
   }
 
-  const finalText = globalContextBudget.enforceOutput(outputText, relPath, `Read lines ${start}-${end}`);
+  const { maskedText, maskedCount } = maskSecrets(outputText);
+  let processedText = maskedText;
+  if (maskedCount > 0) {
+    processedText += `\n[Note: ${maskedCount} credential(s) masked for context security]`;
+  }
+
+  const finalText = globalContextBudget.enforceOutput(processedText, relPath, `Read lines ${start}-${end}`);
 
   return {
     content: [{ type: 'text', text: finalText }],
